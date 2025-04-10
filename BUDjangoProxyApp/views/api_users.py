@@ -13,7 +13,7 @@ def get_create_api_users(request):
     elif request.method == 'POST':
         api_user = APIUser(**request.data)
         api_user.set_password(api_user.app_secret)
-        api_user.save()
+        # api_user.save()
         return JsonResponse(model_to_dict(api_user), safe=False)
 
 @csrf_exempt

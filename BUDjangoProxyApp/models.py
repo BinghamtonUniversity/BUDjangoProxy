@@ -45,7 +45,8 @@ class Environment(models.Model):
 
 
 class API(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    id = models.AutoField(primary_key=True, editable=False)
+    name = models.CharField(max_length=100, unique=False)
     description = models.TextField()
     tags = models.CharField(max_length=255, blank=True)
     api_type = models.CharField(max_length=20, default='php', blank=False, null=False)
@@ -57,7 +58,7 @@ class API(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return self.name
+        return f'{self.name} - {self.id}'
 
     class Meta:
         db_table = "apis"

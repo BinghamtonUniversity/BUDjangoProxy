@@ -19,16 +19,36 @@ def get_create_apis(request):
     if request.method == 'GET':
         return JsonResponse(list(API.objects.all().values()), safe=False)
     elif request.method == 'POST':
+        request_data = request.data
+        request_data['created_by_id'] = 1
+        request_data['updated_by_id'] = 1
+        request_data['user_id'] = 1
         api = API(**request.data)
         api.save()
-        return JsonResponse(model_to_dict(api), safe=False)
+        print(api)
+        api_version  = APIVersion(api= api,
+                                  version_files=[],
+                                  resources=[],
+                                  options = [],
+                                  version_models = [],
+                                  version_views = [],
+                                  version_urls=[],
+                                  created_by_id=1,
+                                  updated_by_id=1,
+                                  stable=False)
+        api_version.save()
+        api_dict = model_to_dict(api)
+        api_dict['id'] = api.id
+        return JsonResponse(api_dict, safe=False)
 
 @csrf_exempt
 @api_view(['GET', 'PUT','DELETE'])
 def get_manage_api(request, id):
     if request.method == 'GET':
         request_data = get_object_or_404(API, id=id)
-        return JsonResponse(model_to_dict(request_data),safe=False)
+        api_dict = model_to_dict(request_data)
+        api_dict['id']= id
+        return JsonResponse(api_dict,safe=False)
     elif request.method == 'PUT':
         request_data = request.data
         API.objects.filter(id=id, api_type='python').update(**request_data)
@@ -63,7 +83,9 @@ def publish_api_version(request,id):
         api_version.description = request_data['description']
         api_version.stable = True;
         api_version.save()
-        return JsonResponse(model_to_dict(api_version), safe=False)
+        api_version_dict= model_to_dict(api_version)
+        api_version_dict['id']= id
+        return JsonResponse(api_version_dict, safe=False)
 
     except APIVersion.DoesNotExist:
         return HttpResponseNotFound()

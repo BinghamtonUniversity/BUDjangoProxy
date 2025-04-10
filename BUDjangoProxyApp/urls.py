@@ -9,9 +9,10 @@ def index(request):
 
 urlpatterns = [
     # API USERS OPERATIONS
-    # GET, POST api_user -> Get or create API User
-    path('api_users/<int:id>', view=api_users.manage_api_users, name='manage_api_users'),
+
     # PUT, DELETE api_user -> Update or delete API User
+    path('api_users/<int:id>', view=api_users.manage_api_users, name='manage_api_users'),
+    # GET, POST api_user -> Get or create API User
     path('api_users', view=api_users.get_create_api_users, name='get_create_api_users'),
     # GET api_user->decrypted_secret
     path('api_users/<int:id>/decrypted_secret', view=api_users.decrypted_app_secret, name='decrypted_app_secret'),

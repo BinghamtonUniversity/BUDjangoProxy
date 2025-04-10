@@ -15,7 +15,7 @@
 #     )
 #     view_codes = forms.CharField(
 #         widget=forms.Textarea(attrs={'rows': 10, 'cols': 80}),
-#         required=True,
+#         # required=True,
 #         help_text="Write the views code here."
 #     )
 #     url_codes = forms.JSONField(
