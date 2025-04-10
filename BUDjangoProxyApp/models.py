@@ -1,4 +1,6 @@
 import json
+import uuid
+
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models.signals import post_save
@@ -92,7 +94,8 @@ class APIInstance(models.Model):
     api_version = models.ForeignKey(APIVersion, default=None, on_delete=models.CASCADE, related_name='versions')
     # api_users = models.JSONField(default=dict, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True)
-    resources = models.JSONField(default=dict, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
+    resources = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
+    route_user_map = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, db_column='route_user_map', null=True)
     public =models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -143,10 +146,10 @@ class Resource(models.Model):
 
 
 class APIUser(models.Model):
+    id = models.PositiveBigIntegerField(primary_key=True, auto_created=True, editable=False)
     app_name = models.CharField(max_length=255, unique=True, null=False,db_column='app_name',default='api_user')
     app_secret = models.CharField(max_length=255, db_column='app_secret',null=True)  # For storing hashed passwords
     encrypted_app_secret = models.CharField(max_length=255, db_column='encrypted_app_secret',null=True)
-    api_instances = models.ManyToManyField('APIInstance', related_name='authorized_users', blank=True)
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True, null=False,
                                     related_name='environment_users',
                                     default=1)

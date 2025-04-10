@@ -1,5 +1,6 @@
 import os
 import logging
+import types
 from operator import truediv
 
 from django.db import models, connection
@@ -79,9 +80,11 @@ class DynamicAppManager:
         version = api_instance.api_version
 
         resources_mapping = {
-            "resources": {resource['name']: resource for resource in
-                          list(Resource.objects.filter(name__in=
-                                                       list(api_instance.resources.values())).values())
+            "resources": {resource['id']: resource for resource in
+                          list(Resource.objects.
+                               filter(id__in=[int(res['resource'])
+                                              for res in api_instance.resources
+                                              if 'resource' in res]).values())
                           },
             "instance_mappings": api_instance.resources,
             "version_resources": version.resources
@@ -165,15 +168,13 @@ class Instance{instance_id}Config(AppConfig):
                 if obj_name in filtered_resources:
 
                     version_resource = filtered_resources[obj_name]
-                    if version_resource in resources_mapping['instance_mappings']:
-                        api_mapping = resources_mapping['instance_mappings'][version_resource]
-                        if api_mapping in resources_mapping['resources']:
-                            found_resource = resources_mapping['resources'][api_mapping]
-                            found_config= helpers.resource_fix(found_resource['config'])
-                            print(found_config)
-                            settings.DATABASES[api_mapping] = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
-                            print(settings.DATABASES[api_mapping])
-                            obj._meta.db_name= api_mapping
+                    api_mapping = next((e for e in resources_mapping['instance_mappings'] if e['name'] == version_resource), None)
+                    if api_mapping:
+                        if int(api_mapping['resource']) in resources_mapping['resources']:
+                            found_resource = resources_mapping['resources'][int(api_mapping['resource'])]
+                            found_config = helpers.resource_fix(found_resource['config'])
+                            settings.DATABASES[api_mapping['name']] = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
+                            obj._meta.db_name= api_mapping['name']
 
                 cls.instance_model_registry[instance_id][obj_name] = obj
                 logger.info(f"Registered models for instance {instance_id}")
@@ -193,9 +194,10 @@ class Instance{instance_id}Config(AppConfig):
         views_namespace = {"__name__": f"BUDjangoProxyApp.dynamic_views_{instance_id}"}
 
         try:
+
             exec(views_code, views_namespace)
             for obj_name, obj in views_namespace.items():
-                if callable(obj):
+                if callable(obj) and isinstance(obj, types.FunctionType):
                     cls.instance_view_registry[instance_id][obj_name] = obj
                     logger.info(f"View {obj_name} registered for instance {instance_id}")
         except Exception as e:

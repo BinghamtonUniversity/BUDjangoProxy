@@ -19,10 +19,8 @@ class DynamicRoutingMiddleware:
         if len(path) < 2:
             return JsonResponse({'error': 'Invalid route format'}, status=400)
 
-        # print(path)
         app_route, view_path = path[0], path[1]
         required_parameters = path[2:]
-        # print(required_parameters)
 
         # Retrieve subdomain and environment
         domain = request.get_host().split(':')[0]
@@ -73,12 +71,20 @@ class DynamicRoutingMiddleware:
                 raise APIUser.DoesNotExist
             if not api_user.is_active:
                 return JsonResponse({'error': 'User account is inactive'}, status=403)
+
+            request_user = next((e for e in api_instance.route_user_map if int(e['api_user']) == api_user.id), None)
+
+            if request_user is None:
+                return self.prompt_for_credentials()
+            if request_user['verb'] != "ALL" and request_user['verb'] != request.method:
+                return self.prompt_for_credentials()
+
+            print("found user!")
         except APIUser.DoesNotExist:
             return self.prompt_for_credentials()
 
         # Verify user access to the specific API instance
-        if api_instance not in api_user.api_instances.all():
-            return self.prompt_for_credentials()
+        # if api_instance not in api_user.api_instances.all():
 
         return api_user
 

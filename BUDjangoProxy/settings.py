@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = env_values["DJANGO_SECRET_KEY"] if 'DJANGO_SECRET_KEY' in env_values else None
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_values["DEBUG"]=='True' if "DJANGO_DEBUG" in env_values else False
+DEBUG = env_values["DEBUG"]=='True' if "DEBUG" in env_values else False
 
 ALLOWED_HOSTS = env_values["ALLOWED_HOSTS"].split(",")
 CSRF_TRUSTED_ORIGINS= env_values["CSRF_TRUSTED_ORIGINS"].split(",")
