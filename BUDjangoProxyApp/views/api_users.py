@@ -26,11 +26,10 @@ def manage_api_users(request, id):
     elif request.method == 'PUT':
         api_user = APIUser.objects.filter(id=id).first()
         if api_user:
-
             print(request.data)
-            # api_user.app_name = request.data['app_name']
-            # api_user.set_password(request.data['app_secret'])
-            # api_user.save()
+            api_user.app_name = request.data['app_name']
+            api_user.set_password(request.data['app_secret'])
+            api_user.save()
         return JsonResponse({
             'message': "Success"
         },status=200)
@@ -38,3 +37,13 @@ def manage_api_users(request, id):
         request_data = request.data
         APIUser.objects.filter(id=request_data['id']).delete()
         return JsonResponse({'message': "Success"}, code=200)
+
+@csrf_exempt
+@api_view(['GET'])
+def decrypted_app_secret(request,id):
+    try:
+        api_user = APIUser.objects.filter(id=id).first()
+        print(api_user.decrypt_password())
+        return JsonResponse({'app_secret':api_user.decrypt_password()},safe=False)
+    except APIUser.DoesNotExist:
+        return HttpResponseNotFound()

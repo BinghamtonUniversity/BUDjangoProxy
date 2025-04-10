@@ -41,7 +41,10 @@ class DynamicAppManager:
         instances = APIInstance.objects.select_related('api', 'api_version', 'environment').all()
 
         for instance in instances:
-            cls.load_api_instance(instance)
+            try:
+                cls.load_api_instance(instance)
+            except Exception as e:
+                logger.error(e)
 
         logger.info(f"Reloaded all API instances. Total: {len(instances)}")
 

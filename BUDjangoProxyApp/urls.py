@@ -13,6 +13,8 @@ urlpatterns = [
     path('api_users/<int:id>', view=api_users.manage_api_users, name='manage_api_users'),
     # PUT, DELETE api_user -> Update or delete API User
     path('api_users', view=api_users.get_create_api_users, name='get_create_api_users'),
+    # GET api_user->decrypted_secret
+    path('api_users/<int:id>/decrypted_secret', view=api_users.decrypted_app_secret, name='decrypted_app_secret'),
 
     # ENVIRONMENTS OPERATIONS
     # GET, POST environment -> Get or create API User
@@ -35,4 +37,19 @@ urlpatterns = [
     path('apis/<int:id>/versions/latest', view=apis.get_latest_api_version, name='get_latest_api_version'),
     # PUT API Version -> Publish the API
     path('apis/<int:id>/publish', view=apis.publish_api_version, name='publish_api_version'),
+
+    # API INSTANCES Operations
+    # GET, POST API Instance(s)
+    path('api_instances', view=api_instances.get_create_api_instances, name='get_create_api_instances'),
+    # GET, PUT, DELETE API Instance by ID
+    path('api_instances/<int:id>', view=api_instances.get_manage_api_instance, name='get_manage_api_instance'),
+
+    # RESOURCES Operations
+    # GET, POST Resources
+    path('resources', view=resources.get_create_resources, name='get_create_resources'),
+    # GET, PUT, DELETE Resources ID
+    path('resources/<int:id>', view=resources.get_manage_resource, name='get_manage_resources'),
+    # GET Resources by Type
+    path('resources/type/<str:type>', view=resources.get_resources_by_type, name='get_resources_by_type'),
+
 ]
