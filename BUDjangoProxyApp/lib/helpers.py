@@ -120,7 +120,7 @@ from BUDjangoProxyApp.services.dynamic_loader import DynamicAppManager as DataPr
 """
 
 def prepare_new_models_file(models):
-    appended_models = f"""{models['content']}"""
+    appended_models = f"""{models['content']}""" if 'content' in models else ""
     # appended_models = ""
     # for model in models:
     #     appended_models += f"""
