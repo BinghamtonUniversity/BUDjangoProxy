@@ -93,10 +93,10 @@ class DynamicAppManager:
         # try:
             # code_content = json.loads(version.code_content)
         # print(version.version_models)
-        models_code = (version.version_models['content']) #code_content.get("models", "")
-
+        models_code = helpers.prepare_new_models_file(version.version_models) #code_content.get("models", "")
+        # print((models_code))
         views_code = helpers.prepare_new_views_file(version.version_views)
-        print(views_code)
+        # print(views_code)
         urls_code = helpers.prepare_new_url_file(version.version_urls)
 
         # resources_code = json.loads(version.version_resources)

@@ -119,17 +119,18 @@ from BUDjangoProxyApp.services.dynamic_loader import DynamicAppManager as DataPr
 {appended_views}
 """
 
-# def prepare_new_models_file(models):
-#     appended_models = ""
-#     for model in models:
-#         appended_models += f"""
-#         def {model['name']}(request):
-#             \t\t{model['content']}
-#         """
-#     return f"""
-# from django.db import models\n\n
-# {appended_models}
-# """
+def prepare_new_models_file(models):
+    appended_models = f"""{models['content']}"""
+    # appended_models = ""
+    # for model in models:
+    #     appended_models += f"""
+    #     def {model['name']}(request):
+    #         \t\t{model['content']}
+    #     """
+    return f"""
+from django.db import models\n\n
+{appended_models}
+"""
 
 
 def resource_fix(resource):
