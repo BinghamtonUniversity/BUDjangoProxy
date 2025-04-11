@@ -12,6 +12,7 @@ def get_create_resources(request):
         return JsonResponse(list(Resource.objects.all().values()), safe=False)
     elif request.method == 'POST':
         api_instance = Resource(**request.data)
+        api_instance.config['pass'] = LaravelEncryptor().encrypt(api_instance.config['pass'])
         api_instance.save()
         return JsonResponse(model_to_dict(api_instance), safe=False)
 
@@ -23,6 +24,7 @@ def get_manage_resource(request, id):
         return JsonResponse(model_to_dict(request_data),safe=False)
     elif request.method == 'PUT':
         request_data = request.data
+        request_data['config']['pass'] = LaravelEncryptor().encrypt(request_data['config']['pass'])
         Resource.objects.filter(id=id).update(**request_data)
         return JsonResponse(model_to_dict(Resource.objects.get(id=id)), safe=False)
     elif request.method == 'DELETE':

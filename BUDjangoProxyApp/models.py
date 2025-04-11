@@ -1,10 +1,9 @@
 import json
-import uuid
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+# from django.db.models.signals import post_save
+# from django.dispatch import receiver
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values
 from .lib import helpers
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class User(models.Model):
-    unique_id = models.CharField(max_length=11, unique=True)
+    unique_id = models.CharField(max_length=11, unique=True, db_column='unique_id')
     name = models.CharField(max_length=200)
     username = models.CharField(max_length=11, null=True, blank=True)
 
@@ -30,7 +29,7 @@ class Environment(models.Model):
         ('prod', 'Production'),
     )
 
-    domain = models.CharField(max_length=200, db_index=True)
+    domain = models.CharField(max_length=200, db_index=True, unique=True)
     name = models.CharField(max_length=200)
     type = models.CharField(max_length=10, choices=environment_type, default='dev')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -45,7 +44,6 @@ class Environment(models.Model):
 
 
 class API(models.Model):
-    id = models.AutoField(primary_key=True, editable=False)
     name = models.CharField(max_length=100, unique=False)
     description = models.TextField()
     tags = models.CharField(max_length=255, blank=True)
@@ -93,7 +91,6 @@ class APIInstance(models.Model):
     route = models.CharField(max_length=255, db_column='slug')
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='instances')
     api_version = models.ForeignKey(APIVersion, default=None, on_delete=models.CASCADE, related_name='versions')
-    # api_users = models.JSONField(default=dict, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True)
     resources = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
     route_user_map = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, db_column='route_user_map', null=True)
@@ -147,7 +144,6 @@ class Resource(models.Model):
 
 
 class APIUser(models.Model):
-    id = models.PositiveBigIntegerField(primary_key=True, auto_created=True, editable=False)
     app_name = models.CharField(max_length=255, unique=True, null=False,db_column='app_name',default='api_user')
     app_secret = models.CharField(max_length=255, db_column='app_secret',null=True)  # For storing hashed passwords
     encrypted_app_secret = models.CharField(max_length=255, db_column='encrypted_app_secret',null=True)
@@ -216,10 +212,12 @@ def reload_api_version(sender, instance, **kwargs):
 
 @receiver(pre_save, sender=APIVersion)
 def validate_code(sender, instance=None, **kwargs):
-    return True
-    helpers.validate_code(instance.version_models['content'])
-    for version_code in instance.version_views:
-        helpers.validate_code(version_code['content'])
-    helpers.validate_code(instance.version_urls)
+    models = instance.version_models['content']
+    urls = helpers.prepare_new_url_file(instance.version_urls)
+    views = helpers.prepare_new_views_file(instance.version_views)
 
-    logger.info(f"Reloaded all instances for API: {instance.api.name}")
+    helpers.validate_code(models)
+    helpers.validate_code(views)
+    helpers.validate_code(urls)
+
+    # logger.info(f"Reloaded all instances for API: {version.api.name}")

@@ -18,22 +18,19 @@ def get_create_environments(request):
 
 @csrf_exempt
 @api_view(['GET','PUT','DELETE'])
-def get_manage_environment(request):
+def get_manage_environment(request,id):
     if request.method == 'GET':
-        request_data = get_object_or_404(Environment, id=id)
-        return JsonResponse(model_to_dict(request_data), safe=False)
+        environment = get_object_or_404(Environment, id=id)
+        return JsonResponse(model_to_dict(environment), safe=False)
     elif request.method == 'PUT':
         environment = Environment.objects.filter(id=id).first()
         if environment:
-            # print(request.data)
             environment.domain = request.data['domain']
             environment.name = request.data['name']
             environment.type = request.data['type']
             environment.updated_at = timezone.now()
             environment.save()
-        return JsonResponse({
-            model_to_dict(environment)
-        }, status=200)
+        return JsonResponse(model_to_dict(environment), safe=False)
     elif request.method == 'DELETE':
         request_data = request.data
         Environment.objects.filter(id=request_data['id']).delete()

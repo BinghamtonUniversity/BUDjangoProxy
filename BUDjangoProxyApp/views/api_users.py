@@ -11,9 +11,17 @@ def get_create_api_users(request):
     if request.method == 'GET':
         return JsonResponse(list(APIUser.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        api_user = APIUser(**request.data)
+        request_data = request.data
+        try:
+            environment = Environment.objects.get(id=int(request_data['environment_id']) if 'environment_id' in request_data else None)
+            request_data['environment'] = environment
+            del request_data['environment_id']
+        except Environment.DoesNotExist:
+            return JsonResponse({'error': 'Environment not found'}, status=404)
+
+        api_user = APIUser(**request_data)
         api_user.set_password(api_user.app_secret)
-        # api_user.save()
+
         return JsonResponse(model_to_dict(api_user), safe=False)
 
 @csrf_exempt

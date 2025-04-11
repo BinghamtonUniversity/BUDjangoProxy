@@ -20,12 +20,12 @@ def get_create_apis(request):
         return JsonResponse(list(API.objects.all().values()), safe=False)
     elif request.method == 'POST':
         request_data = request.data
+
         request_data['created_by_id'] = 1
         request_data['updated_by_id'] = 1
         request_data['user_id'] = 1
         api = API(**request.data)
         api.save()
-        print(api)
         api_version  = APIVersion(api= api,
                                   version_files=[],
                                   resources=[],
@@ -37,24 +37,19 @@ def get_create_apis(request):
                                   updated_by_id=1,
                                   stable=False)
         api_version.save()
-        api_dict = model_to_dict(api)
-        api_dict['id'] = api.id
-        return JsonResponse(api_dict, safe=False)
+        return JsonResponse(model_to_dict(api), safe=False)
 
 @csrf_exempt
 @api_view(['GET', 'PUT','DELETE'])
 def get_manage_api(request, id):
     if request.method == 'GET':
         request_data = get_object_or_404(API, id=id)
-        api_dict = model_to_dict(request_data)
-        api_dict['id']= id
-        return JsonResponse(api_dict,safe=False)
+        return JsonResponse(model_to_dict(request_data),safe=False)
     elif request.method == 'PUT':
         request_data = request.data
         API.objects.filter(id=id, api_type='python').update(**request_data)
         return JsonResponse(model_to_dict(API.objects.get(id=request_data['id'])), safe=False)
     elif request.method == 'DELETE':
-        request_data = request.data
         API.objects.filter(id=id, api_type='python').delete()
         return JsonResponse({'message': "Success"}, code=200)
 
@@ -81,11 +76,9 @@ def publish_api_version(request,id):
         api_version =  APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
         api_version.summary = request_data['summary'];
         api_version.description = request_data['description']
-        api_version.stable = True;
+        api_version.stable = True
         api_version.save()
-        api_version_dict= model_to_dict(api_version)
-        api_version_dict['id']= id
-        return JsonResponse(api_version_dict, safe=False)
+        return JsonResponse(model_to_dict(api_version), safe=False)
 
     except APIVersion.DoesNotExist:
         return HttpResponseNotFound()
