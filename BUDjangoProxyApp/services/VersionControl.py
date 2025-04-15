@@ -4,9 +4,9 @@ from BUDjangoProxyApp.services.dynamic_loader import *
 
 class VersionControl():
     def file_integrity_check(self, api_instance):
-        api_version_id = api_instance.get_api_version_id()
+        api_version = api_instance.get_instance_version()
         try:
-            api_version_metadata = APIVersion.objects.only("id","updated_at").get(pk=api_version_id)
+            api_version_metadata = APIVersion.objects.only("id","updated_at").get(id=api_version.id)
         except APIVersion.DoesNotExist:
             return False
 
@@ -14,18 +14,19 @@ class VersionControl():
         if os.path.exists(f"{DYNAMIC_APPS_DIR}/{api_instance.id}/api_version.json"):
             version_file = helpers.load_into_dict(f"{DYNAMIC_APPS_DIR}/{api_instance.id}/api_version.json")
             if str(api_version_metadata.updated_at) != version_file['updated_at']:
-                self.file_reload(api_instance, api_version_metadata, api_version_id)
+                self.file_reload(api_instance, api_version_metadata, api_version)
                 return False
             else:
                 return True
         else:
-            self.file_reload(api_instance, api_version_metadata, api_version_id)
+            self.file_reload(api_instance, api_version_metadata, api_version)
             return False
 
 
-    def file_reload(self, api_instance,api_version_metadata, api_version_id):
+    def file_reload(self, api_instance,api_version_metadata, api_version):
         helper_data = {
-            "api_id": api_version_id,
+            "api_id": api_version.api.id,
+            "api_version_id": api_version.id,
             "summary": api_version_metadata.summary,
             "description": api_version_metadata.description,
             "stable": api_version_metadata.stable,

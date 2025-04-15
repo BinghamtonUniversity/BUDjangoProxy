@@ -1,16 +1,18 @@
 import os
 import logging
 import types
+from calendar import error
 from operator import truediv
 
 from django.db import models, connection
 import json
 from django.db.models import JSONField
+from django.http import JsonResponse
 from django.urls import path, include
 from django.conf import settings
 
 from .VersionControl import VersionControl
-from ..models import APIInstance, Resource
+from ..models import APIInstance, Resource, APIVersion
 import ast
 import astor
 from ..lib import helpers
@@ -79,7 +81,10 @@ class DynamicAppManager:
         Create or update the dynamic app for an API instance.
         """
         app_path = cls.get_app_path(api_instance.id)
-        version = api_instance.api_version
+        api_version = api_instance.get_instance_version()
+
+        if not api_version:
+            return JsonResponse({"error":"Version does not exist"})
 
         resources_mapping = {
             "resources": {resource['id']: resource for resource in
@@ -89,16 +94,16 @@ class DynamicAppManager:
                                               if 'resource' in res]).values())
                           },
             "instance_mappings": api_instance.resources,
-            "version_resources": version.resources
+            "version_resources": api_version.resources
         }
 
         # try:
             # code_content = json.loads(version.code_content)
         # print(version.version_models)
         # Prepare the version files
-        models_code = helpers.prepare_new_models_file(version.version_models) #code_content.get("models", "")
-        views_code = helpers.prepare_new_views_file(version.version_views)
-        urls_code = helpers.prepare_new_url_file(version.version_urls)
+        models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
+        views_code = helpers.prepare_new_views_file(api_version.version_views)
+        urls_code = helpers.prepare_new_url_file(api_version.version_urls)
 
         # resources_code = json.loads(version.version_resources)
 
@@ -244,13 +249,17 @@ class Instance{instance_id}Config(AppConfig):
         """
         instance_id = api_instance.id
         instance_views = cls.instance_view_registry.get(instance_id, {})
+        api_version = api_instance.get_instance_version()
+
+        if not api_version:
+            return JsonResponse({"error": "Version does not exist"})
 
         # File integrity check to ensure that the most up-to date file is coming from the server
         version_control = VersionControl()
         if not version_control.file_integrity_check(api_instance):
             cls.load_api_instance(api_instance)
 
-        found = next(x for x in api_instance.api_version.version_urls if x['path'] == view_path)
+        found = next(x for x in api_version.version_urls if x['path'] == view_path)
 
         view_func = instance_views.get(found['view_name'])
         cls.current_instance_id = instance_id

@@ -90,7 +90,7 @@ class APIInstance(models.Model):
     name = models.CharField(max_length=100, null=True)
     route = models.CharField(max_length=255, db_column='slug')
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance')
-    api_version = models.ForeignKey(APIVersion, default=None, on_delete=models.CASCADE, related_name='version_instance')
+    api_version = models.ForeignKey(APIVersion, default=None, null=True, blank=True, on_delete=models.CASCADE, related_name='version_instance')
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True)
     resources = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
     route_user_map = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, db_column='route_user_map', null=True)
@@ -104,21 +104,21 @@ class APIInstance(models.Model):
     def __str__(self):
         return f"{self.name} ({self.environment.type})"
 
-    def get_api_version_id(self):
+    def get_instance_version(self):
         if self.api_version is None:
             try:
-                return APIVersion.objects.filter(api=self.api).latest().id
+                return APIVersion.objects.filter(api=self.api).latest('updated_at')
             except APIVersion.DoesNotExist:
                 return None
         elif self.api_version == 0:
             try:
-                return APIVersion.objects.filter(api=self.api, stable=True).latest().id
+                return APIVersion.objects.filter(api=self.api, stable=True).latest('updated_at')
             except APIVersion.DoesNotExist:
                 return None
         else:
-            return self.api_version.id
+            return self.api_version
 
-    def get_api_version(self):
+    def get_instance_version_api(self):
         return self.api_version.api
 
 class Resource(models.Model):

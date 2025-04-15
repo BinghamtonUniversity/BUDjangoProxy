@@ -90,7 +90,7 @@ def manage_api_version_code(request, id):
     try:
         api_version = APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
     except APIVersion.DoesNotExist:
-        api_version = APIVersion()
+        api_version = APIVersion(api_id=id, stable=False, created_by_id=1, updated_by_id=1)
         api_version.stable = False
 
     api_version.version_models = request.data['version_models'] if 'version_models' in request.data else []
