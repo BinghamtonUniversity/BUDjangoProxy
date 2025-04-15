@@ -89,8 +89,8 @@ class APIVersion(models.Model):
 class APIInstance(models.Model):
     name = models.CharField(max_length=100, null=True)
     route = models.CharField(max_length=255, db_column='slug')
-    api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='instances')
-    api_version = models.ForeignKey(APIVersion, default=None, on_delete=models.CASCADE, related_name='versions')
+    api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance')
+    api_version = models.ForeignKey(APIVersion, default=None, on_delete=models.CASCADE, related_name='version_instance')
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True)
     resources = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
     route_user_map = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, db_column='route_user_map', null=True)
@@ -220,7 +220,7 @@ def reload_api_instance(sender, instance, **kwargs):
 
 @receiver(post_save, sender=APIVersion)
 def reload_api_version(sender, instance, **kwargs):
-    instances = instance.instances.all()
+    instances = instance.version_instance.all()
     for api_instance in instances:
         DynamicAppManager.load_api_instance(api_instance)
     logger.info(f"Reloaded all instances for API: {instance.api.name}")
