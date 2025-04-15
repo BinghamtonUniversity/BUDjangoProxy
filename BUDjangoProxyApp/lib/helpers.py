@@ -1,13 +1,23 @@
 import logging
-
+import json
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
-from BUDjangoProxy.settings import env_values
-import os
-# from django.conf import settings
-
-# from django.urls import path
+from BUDjangoProxy.settings import env_values, DYNAMIC_APPS_DIR
 
 logger = logging.getLogger(__name__)
+
+def load_into_dict(file_name):
+    f = open(file_name)
+    data = json.load(f)
+    return data
+
+def save_result_file(out_file, data):
+    try:
+        with open(out_file, 'w') as file:
+            file.write(json.dumps(data))
+            file.close()
+            print(out_file + " has been saved with: " + str(len(data))+ " records!")
+    except Exception as e:
+            print(f"Failed to save errors to {out_file}: {e}")
 
 def validate_code(code, code_type="Python code", context_lines=2):
     """

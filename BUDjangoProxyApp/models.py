@@ -104,6 +104,23 @@ class APIInstance(models.Model):
     def __str__(self):
         return f"{self.name} ({self.environment.type})"
 
+    def get_api_version_id(self):
+        if self.api_version is None:
+            try:
+                return APIVersion.objects.filter(api=self.api).latest().id
+            except APIVersion.DoesNotExist:
+                return None
+        elif self.api_version == 0:
+            try:
+                return APIVersion.objects.filter(api=self.api, stable=True).latest().id
+            except APIVersion.DoesNotExist:
+                return None
+        else:
+            return self.api_version.id
+
+    def get_api_version(self):
+        return self.api_version.api
+
 class Resource(models.Model):
     ENVIRONMENT_TYPE = (
         ('dev', 'Development'),
@@ -188,7 +205,6 @@ class APIUser(models.Model):
     def __str__(self):
         return self.app_name
 
-
 # Observers/ Signals
 
 # Signal to reload the project when a snippet is saved
@@ -204,7 +220,7 @@ def reload_api_instance(sender, instance, **kwargs):
 
 @receiver(post_save, sender=APIVersion)
 def reload_api_version(sender, instance, **kwargs):
-    instances = instance.api.instances.all()
+    instances = instance.instances.all()
     for api_instance in instances:
         DynamicAppManager.load_api_instance(api_instance)
     logger.info(f"Reloaded all instances for API: {instance.api.name}")

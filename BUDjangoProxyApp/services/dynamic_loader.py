@@ -8,6 +8,8 @@ import json
 from django.db.models import JSONField
 from django.urls import path, include
 from django.conf import settings
+
+from .VersionControl import VersionControl
 from ..models import APIInstance, Resource
 import ast
 import astor
@@ -93,10 +95,9 @@ class DynamicAppManager:
         # try:
             # code_content = json.loads(version.code_content)
         # print(version.version_models)
+        # Prepare the version files
         models_code = helpers.prepare_new_models_file(version.version_models) #code_content.get("models", "")
-        # print((models_code))
         views_code = helpers.prepare_new_views_file(version.version_views)
-        # print(views_code)
         urls_code = helpers.prepare_new_url_file(version.version_urls)
 
         # resources_code = json.loads(version.version_resources)
@@ -244,6 +245,11 @@ class Instance{instance_id}Config(AppConfig):
         instance_id = api_instance.id
         instance_views = cls.instance_view_registry.get(instance_id, {})
 
+        # File integrity check to ensure that the most up-to date file is coming from the server
+        version_control = VersionControl()
+        if not version_control.file_integrity_check(api_instance):
+            cls.load_api_instance(api_instance)
+
         found = next(x for x in api_instance.api_version.version_urls if x['path'] == view_path)
 
         view_func = instance_views.get(found['view_name'])
@@ -317,3 +323,4 @@ class Instance{instance_id}Config(AppConfig):
 
         # Convert the modified AST back to a string
         return astor.to_source(tree)
+
