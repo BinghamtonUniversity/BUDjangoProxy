@@ -230,7 +230,7 @@ def reload_api_version(sender, instance, **kwargs):
 def validate_code(sender, instance=None, **kwargs):
     models = helpers.prepare_new_models_file(instance.version_models)
     urls = helpers.prepare_new_url_file(instance.version_urls)
-    views = helpers.prepare_new_views_file(instance.version_views)
+    views = helpers.prepare_new_views_file(instance.version_views, instance.version_urls)
 
     helpers.validate_code(models)
     helpers.validate_code(views)

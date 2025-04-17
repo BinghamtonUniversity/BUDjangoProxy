@@ -1,5 +1,7 @@
 from django.http import JsonResponse
 from .models import APIInstance, APIUser, Environment
+from .services.CustomPathResolver import CustomPathResolver
+from .services.VersionControl import VersionControl
 from .services.dynamic_loader import DynamicAppManager
 import base64
 
@@ -20,7 +22,6 @@ class DynamicRoutingMiddleware:
             return JsonResponse({'error': 'Invalid route format'}, status=400)
 
         app_route, view_path = path[0], path[1]
-        required_parameters = path[2:]
 
         # Retrieve subdomain and environment
         domain = request.get_host().split(':')[0]
@@ -43,10 +44,21 @@ class DynamicRoutingMiddleware:
         # Attach authenticated user and API instance to the request
         request.api_user = api_user
         request.api_instance = api_instance
+        # print(request.__contains__)
+
+        version_control = VersionControl()
+        if not version_control.file_integrity_check(api_instance):
+            DynamicAppManager.load_api_instance(api_instance)
+
+        custom_resolver = CustomPathResolver()
+
+        custom_resolver.incoming_url_fix(request, api_instance)
+        view_func, args, kwargs = custom_resolver.resolve(request, api_instance)
+
 
         # Dynamically load and execute the view
-        view_func = DynamicAppManager.get_view(request.api_instance, view_path)
-        return view_func(request)
+        view_func = DynamicAppManager.get_view(request.api_instance, view_func.__name__)
+        return view_func(request, *args, **kwargs)
 
     def authenticate_api_user(self, request, api_instance):
         """

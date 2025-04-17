@@ -102,7 +102,7 @@ class DynamicAppManager:
         # print(version.version_models)
         # Prepare the version files
         models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
-        views_code = helpers.prepare_new_views_file(api_version.version_views)
+        views_code = helpers.prepare_new_views_file(api_version.version_views, api_version.version_urls)
         urls_code = helpers.prepare_new_url_file(api_version.version_urls)
 
         # resources_code = json.loads(version.version_resources)
@@ -243,7 +243,7 @@ class Instance{instance_id}Config(AppConfig):
 
     ### ACCESSORS ###
     @classmethod
-    def get_view(cls, api_instance, view_path):
+    def get_view(cls, api_instance, view_name):
         """
         Retrieve a specific view for a given route dynamically.
         """
@@ -255,16 +255,15 @@ class Instance{instance_id}Config(AppConfig):
             return JsonResponse({"error": "Version does not exist"})
 
         # File integrity check to ensure that the most up-to date file is coming from the server
-        version_control = VersionControl()
-        if not version_control.file_integrity_check(api_instance):
-            cls.load_api_instance(api_instance)
+        # version_control = VersionControl()
+        # if not version_control.file_integrity_check(api_instance):
+        #     cls.load_api_instance(api_instance)
 
-        found = next(x for x in api_version.version_urls if x['path'] == view_path)
 
-        view_func = instance_views.get(found['view_name'])
+        view_func = instance_views.get(view_name)
         cls.current_instance_id = instance_id
         if not view_func:
-            raise LookupError(f"View {view_path} not found for instance {api_instance.route}.")
+            raise LookupError(f"View {view_name} not found for instance {api_instance.route}.")
 
         return view_func
 

@@ -102,33 +102,6 @@ def prepare_new_resource_db(type, resource):
                 'TIME_ZONE': None
             }
 
-
-def prepare_new_url_file(urls):
-    # print(type(urls))
-    url_patterns = []
-    for url in urls:
-        url_patterns.append(f"path('{url['path']}',view={url['view_name']},name='{url['view_name']}')")
-
-
-    return f"""
-from django.urls import path
-from .views import *
-
-urlpatterns = [{",\n".join(url_patterns)}]
-    """
-
-def prepare_new_views_file(views):
-    appended_views = ""
-    for view in views:
-        appended_views += f"""def {view['name']}(request):
-    {view['content'].replace('\n', '\n    ')}
-"""
-
-    return f"""from django.http import JsonResponse
-from BUDjangoProxyApp.services.dynamic_loader import DynamicAppManager as DataProxyManager
-{appended_views}
-"""
-
 def prepare_new_models_file(models):
     appended_models = f"""{models['content']}""" if 'content' in models else ""
     # appended_models = ""
@@ -142,6 +115,48 @@ from django.db import models\n\n
 {appended_models}
 """
 
+
+def prepare_new_views_file(views, urls):
+    appended_views = ""
+    request_param = ""
+    for view in views:
+        request_params = next((url for url in urls if url['view_name'] == view['name']), None)
+        if request_params and 'required' in request_params:
+            required_params = [param['name'] for param in request_params['required']]
+            request_param = ",".join(required_params)
+
+        appended_views += f"""def {view['name']}(request{","+request_param if request_param!="" else ''}):
+    args = request.args if hasattr(request,'args') else None
+    options = request.options if hasattr(request,'options') else None
+    resources = request.resources if hasattr(request,'resources') else None
+    
+    {view['content'].replace('\n', '\n    ')}
+"""
+
+    return f"""from django.http import JsonResponse
+from BUDjangoProxyApp.services.dynamic_loader import DynamicAppManager as DataProxyManager
+{appended_views}
+"""
+
+# Preparing the urls files
+def prepare_new_url_file(urls):
+    url_patterns = []
+    request_param = ""
+
+    for url in urls:
+        if url and 'required' in url:
+            required_params = [f"<str:{param['name']}>" for param in url['required']]
+            request_param = "/".join(required_params)
+        print(request_param)
+        url_patterns.append(f"path('{url['path']}{"/"+request_param if request_param != "" else ""}',view={url['view_name']},name='{url['view_name']}')")
+
+
+    return f"""
+from django.urls import path
+from .views import *
+
+urlpatterns = [{",\n".join(url_patterns)}]
+    """
 
 def resource_fix(resource):
     encryptor = LaravelEncryptor(env_values['LARAVEL_APP_KEY'])
