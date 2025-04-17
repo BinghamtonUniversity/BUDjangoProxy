@@ -20,7 +20,7 @@ class CustomPathResolver:
                 print(found_required_params)
                 if found_required_params:
                     request.path += "/"
-                    request.path += "/".join([args_dict[param['name']] for param in found_required_params])
+                    request.path += "/".join([args_dict[param['name']] for param in found_required_params if param['name'] in args_dict])
 
 
     def resolve(self, request, api_instance):

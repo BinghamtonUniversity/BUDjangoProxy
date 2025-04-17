@@ -121,7 +121,7 @@ def prepare_new_views_file(views, urls):
     request_param = ""
     for view in views:
         request_params = next((url for url in urls if url['view_name'] == view['name']), None)
-        if request_params and 'required' in request_params:
+        if 'required' in request_params and len(request_params['required'])>0:
             required_params = [param['name'] for param in request_params['required']]
             request_param = ",".join(required_params)
 
