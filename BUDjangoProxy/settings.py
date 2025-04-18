@@ -17,8 +17,6 @@ env_values = dotenv_values(".env")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# check_dynamic_apps_dir()
-
 # "settings.py" is getting called multiple times due to dynamic DB addition
 # !!!! AVOID Initializing oracledb or mysql here!!!
 

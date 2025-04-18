@@ -1,22 +1,16 @@
 import os
 import logging
 import types
-from calendar import error
-from operator import truediv
-
-from django.db import models, connection
-import json
-from django.db.models import JSONField
+from django.db import models
 from django.http import JsonResponse
 from django.urls import path, include
 from django.conf import settings
-
-from .VersionControl import VersionControl
-from ..models import APIInstance, Resource, APIVersion
+from ..models import Resource
 import ast
 import astor
 from ..lib import helpers
 from dotenv import dotenv_values
+
 env_values = dotenv_values(".env")
 
 logger = logging.getLogger(__name__)
@@ -99,13 +93,14 @@ class DynamicAppManager:
 
         # try:
             # code_content = json.loads(version.code_content)
-        # print(version.version_models)
+        # instance_options = {}
         # Prepare the version files
         models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
-        views_code = helpers.prepare_new_views_file(api_version.version_views, api_version.version_urls)
+        views_code = helpers.prepare_new_views_file(api_version.version_views,
+                                                    api_version.version_urls,
+                                                    resources=None,
+                                                    options=api_instance.options)
         urls_code = helpers.prepare_new_url_file(api_version.version_urls)
-
-        # resources_code = json.loads(version.version_resources)
 
         # Validate codes
         helpers.validate_code(models_code)
@@ -161,32 +156,33 @@ class Instance{instance_id}Config(AppConfig):
             "app_label": f"dynamic_apps_{instance_id}"
         }
 
-        # try:
-        exec(models_code, models_namespace)
-        for obj_name, obj in models_namespace.items():
-            if isinstance(obj, type) and issubclass(obj, models.Model):
-                if not hasattr(obj, "_meta"):
-                    obj._meta = type("_meta", (), {})
+        try:
+            exec(models_code, models_namespace)
+            for obj_name, obj in models_namespace.items():
+                if isinstance(obj, type) and issubclass(obj, models.Model):
+                    if not hasattr(obj, "_meta"):
+                        obj._meta = type("_meta", (), {})
 
-                filtered_resources = {res['model_name']: res['name'] for res in resources_mapping['version_resources']
-                                      if res['type'] == 'Model'}
-                #     Model DB settings and registration before the model registration
-                if obj_name in filtered_resources:
+                    filtered_resources = {res['model_name']: res['name'] for res in resources_mapping['version_resources']
+                                          if res['type'] == 'Model'}
+                    # Model DB settings and registration before the model registration
+                    if obj_name in filtered_resources:
 
-                    version_resource = filtered_resources[obj_name]
-                    api_mapping = next((e for e in resources_mapping['instance_mappings'] if e['name'] == version_resource), None)
-                    if api_mapping:
-                        if int(api_mapping['resource']) in resources_mapping['resources']:
-                            found_resource = resources_mapping['resources'][int(api_mapping['resource'])]
-                            found_config = helpers.resource_fix(found_resource['config'])
-                            settings.DATABASES[api_mapping['name']] = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
-                            obj._meta.db_name= api_mapping['name']
+                        version_resource = filtered_resources[obj_name]
+                        api_mapping = next((e for e in resources_mapping['instance_mappings'] if e['name'] == version_resource), None)
+                        if api_mapping:
+                            if int(api_mapping['resource']) in resources_mapping['resources']:
+                                found_resource = resources_mapping['resources'][int(api_mapping['resource'])]
+                                found_config = helpers.resource_fix(found_resource['config'])
+                                if api_mapping['name'] != 'default':
+                                    settings.DATABASES[api_mapping['name']] = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
+                                obj._meta.db_name= api_mapping['name']
 
-                cls.instance_model_registry[instance_id][obj_name] = obj
-                logger.info(f"Registered models for instance {instance_id}")
+                    cls.instance_model_registry[instance_id][obj_name] = obj
+                    logger.info(f"Registered models for instance {instance_id}")
 
-        # except Exception as e:
-        #     logger.error(f"Error registering models for instance {instance_id}: {e}")
+        except Exception as e:
+            raise Exception(f"Failed to register models for instance {instance_id}: {e}")
 
     ### VIEW MANAGEMENT ###
 
@@ -264,8 +260,10 @@ class Instance{instance_id}Config(AppConfig):
         cls.current_instance_id = instance_id
         if not view_func:
             raise LookupError(f"View {view_name} not found for instance {api_instance.route}.")
-
-        return view_func
+        try:
+            return view_func
+        except Exception as e:
+            raise Exception(e)
 
 
     @classmethod

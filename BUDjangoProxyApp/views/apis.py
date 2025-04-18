@@ -1,12 +1,8 @@
 import json
 from urllib import request
-
 from django.forms import model_to_dict
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
-
 from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNotFound
-from django.template.defaultfilters import default
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from django.core.exceptions import FieldError
@@ -74,7 +70,7 @@ def publish_api_version(request,id):
     request_data = request.data
     try:
         api_version =  APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
-        api_version.summary = request_data['summary'];
+        api_version.summary = request_data['summary']
         api_version.description = request_data['description']
         api_version.stable = True
         api_version.save()
@@ -86,7 +82,6 @@ def publish_api_version(request,id):
 @csrf_exempt
 @api_view([ 'PUT'])
 def manage_api_version_code(request, id):
-    request_data = request.data
     try:
         api_version = APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
     except APIVersion.DoesNotExist:
@@ -103,7 +98,3 @@ def manage_api_version_code(request, id):
     api_version.save()
 
     return JsonResponse(model_to_dict(api_version), safe=False)
-
-
-
-

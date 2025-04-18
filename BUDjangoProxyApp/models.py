@@ -1,9 +1,6 @@
 import json
-
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
-# from django.db.models.signals import post_save
-# from django.dispatch import receiver
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values
 from .lib import helpers
@@ -64,7 +61,7 @@ class API(models.Model):
 
 class APIVersion(models.Model):
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_versions',parent_link=True, db_index=True)
-    summary = models.TextField(max_length=255, null=True, blank=True)
+    summary = models.CharField(max_length=255, null=True, blank=True)
     description = models.CharField(max_length=255, null=True, blank=True)
     stable = models.BooleanField(default=False)
     version_models = models.JSONField()
@@ -75,7 +72,7 @@ class APIVersion(models.Model):
     resources = models.JSONField(default=dict, null=True, blank=True)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by', db_column='user_id')
     updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_updated_by')
 
     def __str__(self):
@@ -92,7 +89,8 @@ class APIInstance(models.Model):
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance')
     api_version = models.ForeignKey(APIVersion, default=None, null=True, blank=True, on_delete=models.CASCADE, related_name='version_instance')
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True)
-    resources = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True)
+    resources = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False)
+    options = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False)
     route_user_map = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, db_column='route_user_map', null=True)
     public =models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now=True)
@@ -230,7 +228,7 @@ def reload_api_version(sender, instance, **kwargs):
 def validate_code(sender, instance=None, **kwargs):
     models = helpers.prepare_new_models_file(instance.version_models)
     urls = helpers.prepare_new_url_file(instance.version_urls)
-    views = helpers.prepare_new_views_file(instance.version_views, instance.version_urls)
+    views = helpers.prepare_new_views_file(instance.version_views,instance.version_urls)
 
     helpers.validate_code(models)
     helpers.validate_code(views)

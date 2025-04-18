@@ -19,7 +19,7 @@ def save_result_file(out_file, data):
     except Exception as e:
             print(f"Failed to save errors to {out_file}: {e}")
 
-def validate_code(code, code_type="Python code", context_lines=2):
+def validate_code(code, code_type="python", context_lines=2):
     """
     Validate the provided Python code for syntax errors and log the line number with surrounding context.
 
@@ -30,33 +30,33 @@ def validate_code(code, code_type="Python code", context_lines=2):
     Returns:
         bool: True if the code is valid, False otherwise.
     """
+    if code_type == "python":
+        try:
+            compile(code, '<string>', 'exec')  # Attempt to compile the code
+            return True
+        except SyntaxError as e:
+            # Split code into lines for better context
+            lines = code.splitlines()
+            error_line_index = e.lineno - 1  # Zero-based index for the error line
 
-    try:
-        compile(code, '<string>', 'exec')  # Attempt to compile the code
-        return True
-    except SyntaxError as e:
-        # Split code into lines for better context
-        lines = code.splitlines()
-        error_line_index = e.lineno - 1  # Zero-based index for the error line
+            # Get surrounding context lines
+            start = max(0, error_line_index - context_lines)
+            end = min(len(lines), error_line_index + context_lines + 1)
+            context = "\n".join(
+                f"{i + 1:>4}: {line}" + ("  <--- ERROR" if i == error_line_index - 1 else "")
+                for i, line in enumerate(lines[start:end])
+            )
 
-        # Get surrounding context lines
-        start = max(0, error_line_index - context_lines)
-        end = min(len(lines), error_line_index + context_lines + 1)
-        context = "\n".join(
-            f"{i + 1:>4}: {line}" + ("  <--- ERROR" if i == error_line_index - 1 else "")
-            for i, line in enumerate(lines[start:end])
-        )
-
-        # Log the error with context
-        error_message = (
-            f"Syntax error in {code_type}:\n"
-            f"  Message: {e.msg}\n"
-            f"  Line: {e.lineno}\n"
-            f"  Offset: {e.offset}\n"
-            f"  Code Context:\n{context}"
-        )
-        logger.error(error_message)
-        raise SyntaxError(error_message)
+            # Log the error with context
+            error_message = (
+                f"Syntax error in {code_type}:\n"
+                f"  Message: {e.msg}\n"
+                f"  Line: {e.lineno}\n"
+                f"  Offset: {e.offset}\n"
+                f"  Code Context:\n{context}"
+            )
+            logger.error(error_message)
+            raise SyntaxError(error_message)
 
 
 def prepare_new_resource_db(type, resource):
@@ -116,7 +116,7 @@ from django.db import models\n\n
 """
 
 
-def prepare_new_views_file(views, urls):
+def prepare_new_views_file(views, urls, resources=None, options=None):
     appended_views = ""
     request_param = ""
     for view in views:
@@ -127,8 +127,8 @@ def prepare_new_views_file(views, urls):
 
         appended_views += f"""def {view['name']}(request{","+request_param if request_param!="" else ''}):
     args = request.args if hasattr(request,'args') else None
-    options = request.options if hasattr(request,'options') else None
-    resources = request.resources if hasattr(request,'resources') else None
+    options = {options if options is not None else 'None'}
+    resources = {resources if resources is not None else 'None'}
     
     {view['content'].replace('\n', '\n    ')}
 """
@@ -147,7 +147,7 @@ def prepare_new_url_file(urls):
         if url and 'required' in url:
             required_params = [f"<str:{param['name']}>" for param in url['required']]
             request_param = "/".join(required_params)
-        print(request_param)
+
         url_patterns.append(f"path('{url['path']}{"/"+request_param if request_param != "" else ""}',view={url['view_name']},name='{url['view_name']}')")
 
 

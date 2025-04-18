@@ -4,8 +4,8 @@ import json
 from django.urls.resolvers import get_resolver, RegexPattern
 from django.urls import resolve, Resolver404, include, path, URLResolver
 
-class CustomPathResolver:
 
+class CustomPathResolver:
     def incoming_url_fix(self, request, api_instance):
         args_dict = request.GET.dict()
         args_dict.update(request.POST.dict())
@@ -16,8 +16,7 @@ class CustomPathResolver:
             request.args = args_dict
             instance_version = api_instance.get_instance_version()
             if instance_version:
-                found_required_params = next((url['required'] for url in instance_version.version_urls if url['path'] in request.path), None)
-                print(found_required_params)
+                found_required_params = next((url['required'] for url in instance_version.version_urls if url['path'] in request.path and 'required' in url), None)
                 if found_required_params:
                     request.path += "/"
                     request.path += "/".join([args_dict[param['name']] for param in found_required_params if param['name'] in args_dict])
@@ -27,6 +26,7 @@ class CustomPathResolver:
         instance_id = api_instance.id  # Assuming APIInstance has an 'id' field
         module_path = f"BUDjangoProxyApp.dynamic_apps.{instance_id}.urls"
         urls_module = importlib.import_module(module_path)
+        instance_version = api_instance.get_instance_version()
 
         # Get the URL patterns from the module
         dynamic_urlconf = getattr(urls_module, 'urlpatterns', [])

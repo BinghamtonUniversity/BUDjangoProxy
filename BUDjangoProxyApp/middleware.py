@@ -1,4 +1,6 @@
-from django.http import JsonResponse
+from sys import api_version
+
+from django.http import JsonResponse, HttpResponseNotAllowed
 from .models import APIInstance, APIUser, Environment
 from .services.CustomPathResolver import CustomPathResolver
 from .services.VersionControl import VersionControl
@@ -36,6 +38,11 @@ class DynamicRoutingMiddleware:
         except APIInstance.DoesNotExist:
             return JsonResponse({'error': 'API instance not found'}, status=404)
 
+        # Check whether the version is up to date
+        version_control = VersionControl()
+        if not version_control.file_integrity_check(api_instance):
+            DynamicAppManager.load_api_instance(api_instance)
+
         # Authenticate API user for every request
         api_user = self.authenticate_api_user(request, api_instance)
         if isinstance(api_user, JsonResponse):  # Authentication failed
@@ -44,16 +51,24 @@ class DynamicRoutingMiddleware:
         # Attach authenticated user and API instance to the request
         request.api_user = api_user
         request.api_instance = api_instance
-        # print(request.__contains__)
-
-        version_control = VersionControl()
-        if not version_control.file_integrity_check(api_instance):
-            DynamicAppManager.load_api_instance(api_instance)
+        # Ensure that requested path allow the request method
+        # version_urls = api_instance.get_instance_version().version_urls
+        # print('version_urls',version_urls)
+        # current_version_url = next((url for url in version_urls if path[1:]== url['path']), None)
+        # print('current_one',current_version_url)
 
         custom_resolver = CustomPathResolver()
-
+        # Fixing the incoming URL for the URLs file
         custom_resolver.incoming_url_fix(request, api_instance)
+
+        # Get the args and kwargs maps from the resolver
         view_func, args, kwargs = custom_resolver.resolve(request, api_instance)
+
+        version_urls = api_instance.get_instance_version().version_urls
+        # print('version_urls', version_urls)
+        current_version_url = next((url for url in version_urls if view_func.__name__ == url['view_name']), None)
+        if request.method != "ALL" and request.method != current_version_url['verb']:
+            return HttpResponseNotAllowed(request.method, f"{request.method} method not allowed for this route")
 
 
         # Dynamically load and execute the view
@@ -86,12 +101,16 @@ class DynamicRoutingMiddleware:
 
             request_user = next((e for e in api_instance.route_user_map if int(e['api_user']) == api_user.id), None)
 
+            # Check if the user is one of the users that can access to the instance
             if request_user is None:
                 return self.prompt_for_credentials()
+            # Check if the user can use the request method
             if request_user['verb'] != "ALL" and request_user['verb'] != request.method:
                 return self.prompt_for_credentials()
+            # API User Path security enforcement
+            if request_user['route']!= "" and not request.path.startswith(f"/{api_instance.route}{request_user['route']}"):
+                return self.prompt_for_credentials()
 
-            print("found user!")
         except APIUser.DoesNotExist:
             return self.prompt_for_credentials()
 
