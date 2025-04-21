@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.utils import timezone
 from ..models import *
 
 @csrf_exempt
@@ -43,6 +44,7 @@ def get_manage_api(request, id):
         return JsonResponse(model_to_dict(request_data),safe=False)
     elif request.method == 'PUT':
         request_data = request.data
+        request_data['updated_at'] = timezone.now()
         API.objects.filter(id=id, api_type='python').update(**request_data)
         return JsonResponse(model_to_dict(API.objects.get(id=request_data['id'])), safe=False)
     elif request.method == 'DELETE':
@@ -94,6 +96,7 @@ def manage_api_version_code(request, id):
     api_version.version_files = request.data['version_files'] if 'version_files' in request.data else []
     api_version.resources = request.data['resources'] if 'resources' in request.data else []
     api_version.options = request.data['options'] if 'options' in request.data else []
+    api_version.updated_at = timezone.now()
 
     api_version.save()
 

@@ -208,7 +208,7 @@ class APIUser(models.Model):
 # Signal to reload the project when a snippet is saved
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from BUDjangoProxyApp.services.dynamic_loader import DynamicAppManager
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
 
 
 @receiver(post_save, sender=APIInstance)

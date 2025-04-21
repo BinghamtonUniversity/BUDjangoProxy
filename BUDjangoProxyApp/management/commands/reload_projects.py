@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from BUDjangoProxyApp.services.dynamic_loader import DynamicAppManager
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
 
 class Command(BaseCommand):
     help = 'Reload all dynamic projects'

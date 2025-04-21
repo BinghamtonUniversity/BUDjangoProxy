@@ -1,10 +1,8 @@
-from sys import api_version
-
 from django.http import JsonResponse, HttpResponseNotAllowed
 from .models import APIInstance, APIUser, Environment
 from .services.CustomPathResolver import CustomPathResolver
 from .services.VersionControl import VersionControl
-from .services.dynamic_loader import DynamicAppManager
+from .services.DynamicLoader import DynamicAppManager
 import base64
 
 class DynamicRoutingMiddleware:
@@ -40,7 +38,9 @@ class DynamicRoutingMiddleware:
 
         # Check whether the version is up to date
         version_control = VersionControl()
+        refresh_required = False
         if not version_control.file_integrity_check(api_instance):
+            refresh_required = True
             DynamicAppManager.load_api_instance(api_instance)
 
         # Authenticate API user for every request
@@ -62,7 +62,7 @@ class DynamicRoutingMiddleware:
         custom_resolver.incoming_url_fix(request, api_instance)
 
         # Get the args and kwargs maps from the resolver
-        view_func, args, kwargs = custom_resolver.resolve(request, api_instance)
+        view_func, args, kwargs = custom_resolver.resolve(request, api_instance, refresh_required=refresh_required)
 
         version_urls = api_instance.get_instance_version().version_urls
         # print('version_urls', version_urls)

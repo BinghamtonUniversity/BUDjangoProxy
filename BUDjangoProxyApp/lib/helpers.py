@@ -102,18 +102,32 @@ def prepare_new_resource_db(type, resource):
                 'TIME_ZONE': None
             }
 
+
 def prepare_new_models_file(models):
-    appended_models = f"""{models['content']}""" if 'content' in models else ""
-    # appended_models = ""
-    # for model in models:
-    #     appended_models += f"""
-    #     def {model['name']}(request):
-    #         \t\t{model['content']}
-    #     """
-    return f"""
-from django.db import models\n\n
-{appended_models}
-"""
+    appended_models = ""
+
+    for model in models:
+        # Start the model class definition
+        appended_models += f"""class {model['name']}({model['inheritance']}):\n"""
+        # Add model content with proper indentation
+        appended_models += f"""    {model['content'].replace('\n', '\n    ')}\n"""
+
+        # Add Meta class
+        appended_models += f"""    class Meta:\n"""
+        for meta in model.get('class_meta', []):
+            if meta['value'] != "default":
+                appended_models += f"""        {meta['name']} = '{meta['value'].replace('\n', '\n        ')}'\n"""
+        appended_models += "\n"  # Add a newline after Meta
+
+        # Add class methods if they exist
+        if 'class_methods' in model:
+            for method in model['class_methods']:
+                appended_models += f"""    def {method['name']}({method['params']}):\n"""
+                appended_models += f"""        {method['content'].replace('\n', '\n        ')}\n\n"""
+
+        appended_models += "\n"  # Add a newline between models
+
+    return f"""from django.db import models\n\n{appended_models}"""
 
 
 def prepare_new_views_file(views, urls, resources=None, options=None):
@@ -134,7 +148,7 @@ def prepare_new_views_file(views, urls, resources=None, options=None):
 """
 
     return f"""from django.http import JsonResponse
-from BUDjangoProxyApp.services.dynamic_loader import DynamicAppManager as DataProxyManager
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager
 {appended_views}
 """
 

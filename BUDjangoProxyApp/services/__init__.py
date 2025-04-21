@@ -1,3 +1,3 @@
-# from .dynamic_loader import DynamicAppManager
+# from .DynamicLoader import DynamicAppManager
 #
 # __all__ = ["DynamicAppManager"]

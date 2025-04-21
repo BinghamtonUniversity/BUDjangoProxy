@@ -1,6 +1,6 @@
 from BUDjangoProxyApp.models import *
 from BUDjangoProxy.settings import DYNAMIC_APPS_DIR, os
-from BUDjangoProxyApp.services.dynamic_loader import *
+from BUDjangoProxyApp.services.DynamicLoader import *
 
 class VersionControl():
     def file_integrity_check(self, api_instance):
