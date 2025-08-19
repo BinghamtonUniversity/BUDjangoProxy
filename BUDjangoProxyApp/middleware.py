@@ -99,25 +99,35 @@ class DynamicRoutingMiddleware:
             if not api_user.is_active:
                 return JsonResponse({'error': 'User account is inactive'}, status=403)
 
-            request_user = next((e for e in api_instance.route_user_map if int(e['api_user']) == api_user.id), None)
+            # print('api_instance',api_instance.route_user_map)
+            request_user_routes = list(filter(lambda e: int(e['api_user']) == api_user.id, api_instance.route_user_map))
 
+            # request.method
             # Check if the user is one of the users that can access to the instance
-            if request_user is None:
+            if len(request_user_routes) == 0:
                 return self.prompt_for_credentials()
+            # print('request_user', request_user)
             # Check if the user can use the request method
-            if request_user['verb'] != "ALL" and request_user['verb'] != request.method:
-                return self.prompt_for_credentials()
+            if next((e for e in request_user_routes if e['verb'] == "ALL" and e['route'] ==""), None):
+                print("user has ALL for all routes")
+                return api_user
+            elif next((e for e in request_user_routes if e['verb'] == "ALL" and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
+                print("user has ALL for this route")
+                return api_user
+            elif next((e for e in request_user_routes if e['verb'] == request.method and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
+                print(f"user has {request.method} for this route")
+                return api_user
             # API User Path security enforcement
-            if request_user['route']!= "" and not request.path.startswith(f"/{api_instance.route}{request_user['route']}"):
+            else:
                 return self.prompt_for_credentials()
+            # if request_user['route']!= "" and not request.path.startswith(f"/{api_instance.route}{request_user['route']}"):
+            #     return self.prompt_for_credentials()
 
         except APIUser.DoesNotExist:
             return self.prompt_for_credentials()
 
         # Verify user access to the specific API instance
         # if api_instance not in api_user.api_instances.all():
-
-        return api_user
 
     @staticmethod
     def prompt_for_credentials():

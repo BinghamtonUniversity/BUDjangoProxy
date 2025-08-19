@@ -132,8 +132,8 @@ def prepare_new_models_file(models):
 
 def prepare_new_views_file(views, urls, resources=None, options=None):
     appended_views = ""
-    request_param = ""
     for view in views:
+        request_param = ""
         request_params = next((url for url in urls if url['view_name'] == view['name']), None)
         if 'required' in request_params and len(request_params['required'])>0:
             required_params = [param['name'] for param in request_params['required']]
@@ -155,9 +155,10 @@ from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataPro
 # Preparing the urls files
 def prepare_new_url_file(urls):
     url_patterns = []
-    request_param = ""
+
 
     for url in urls:
+        request_param = ""
         if url and 'required' in url:
             required_params = [f"<str:{param['name']}>" for param in url['required']]
             request_param = "/".join(required_params)
