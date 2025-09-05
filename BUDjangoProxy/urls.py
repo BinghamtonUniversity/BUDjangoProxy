@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from django.contrib import admin
+# from django.contrib import admin
 from django.urls import path, include
 from BUDjangoProxyApp import urls as api_urls
 from django.urls import re_path
@@ -24,6 +24,6 @@ from django.http import JsonResponse
 def index(request):
     return JsonResponse({'message': 'Welcome to Dynamic App Manager'})
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # path('admin/', admin.site.urls),
     path('api/', include(api_urls))
 ]

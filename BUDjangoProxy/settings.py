@@ -30,19 +30,21 @@ SECRET_KEY = env_values["DJANGO_SECRET_KEY"] if 'DJANGO_SECRET_KEY' in env_value
 DEBUG = env_values["DEBUG"]=='True' if "DEBUG" in env_values else False
 
 ALLOWED_HOSTS = env_values["ALLOWED_HOSTS"].split(",")
+
 CSRF_TRUSTED_ORIGINS= env_values["CSRF_TRUSTED_ORIGINS"].split(",")
 CORS_ORIGIN_ALLOW_ALL = env_values["CORS_ORIGIN_ALLOW_ALL"]=="True" if "CORS_ORIGIN_ALLOW_ALL" in env_values else False
 
+# CORS_ALLOW_CREDENTIALS = True
+
 # Application definition
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
+    # 'django.contrib.admin',
+    # 'django.contrib.auth',
+    # 'django.contrib.contenttypes',
+    # 'django.contrib.sessions',
+    # 'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
-    'rest_framework',
     'BUDjangoProxyApp',
     'BUDjangoProxyApp.dynamic_apps',
 ]
@@ -51,18 +53,21 @@ INSTALLED_APPS = [
 DYNAMIC_APPS_DIR = os.path.join(BASE_DIR, 'BUDjangoProxyApp/dynamic_apps')
 
 
+
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware',
-              'django.contrib.sessions.middleware.SessionMiddleware',
               'django.middleware.common.CommonMiddleware',
-              'django.contrib.auth.middleware.AuthenticationMiddleware',
-              'django.contrib.messages.middleware.MessageMiddleware',
               'django.middleware.clickjacking.XFrameOptionsMiddleware',
-              # 'BUDjangoProxyApp.middleware.NormalizeRequestDataMiddleware',
-              'BUDjangoProxyApp.middleware.DynamicRoutingMiddleware',
-              'corsheaders.middleware.CorsMiddleware'
+              'corsheaders.middleware.CorsMiddleware',
+              "django.middleware.csrf.CsrfViewMiddleware",
+
+              # Custom Middlewares
+              'BUDjangoProxyApp.middleware.customRouting.DynamicRoutingMiddleware',
+              'BUDjangoProxyApp.middleware.customRouting.NormalizeRequestDataMiddleware',
+              'BUDjangoProxyApp.middleware.userAuthentication.UserAuthenticationMiddleware',
               ]
 
 ROOT_URLCONF = 'BUDjangoProxy.urls'
+
 
 TEMPLATES = [
     {

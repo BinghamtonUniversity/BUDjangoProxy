@@ -4,24 +4,31 @@ from django.forms import model_to_dict
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNotFound
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils import timezone
 from ..models import *
+from ..lib.policies_wrapper import policy
+from ..policies.apis import *
 
 @csrf_exempt
-@api_view(['GET','POST'])
+@policy(can_get_create_apis)
 def get_create_apis(request):
+    if request.method not in ['GET', 'POST']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     if request.method == 'GET':
         return JsonResponse(list(API.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        request_data = request.data
+        try:
+            request_data = request.data
+        except:
+            request_data = request.GET.dict()
 
         request_data['created_by_id'] = 1
         request_data['updated_by_id'] = 1
         request_data['user_id'] = 1
-        api = API(**request.data)
+        api = API(**request_data)
         api.save()
         api_version  = APIVersion(api= api,
                                   version_files=[],
@@ -37,38 +44,50 @@ def get_create_apis(request):
         return JsonResponse(model_to_dict(api), safe=False)
 
 @csrf_exempt
-@api_view(['GET', 'PUT','DELETE'])
+@policy(can_manage_api, object_arg_name='id')
 def get_manage_api(request, id):
+    if request.method not in ['GET', 'PUT','DELETE']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     if request.method == 'GET':
         request_data = get_object_or_404(API, id=id)
         return JsonResponse(model_to_dict(request_data),safe=False)
     elif request.method == 'PUT':
         request_data = request.data
+
         request_data['updated_at'] = timezone.now()
         API.objects.filter(id=id, api_type='python').update(**request_data)
         return JsonResponse(model_to_dict(API.objects.get(id=request_data['id'])), safe=False)
     elif request.method == 'DELETE':
         API.objects.filter(id=id, api_type='python').delete()
-        return JsonResponse({'message': "Success"}, code=200)
+        return JsonResponse({'message': "Success"}, status=200)
 
 
 @csrf_exempt
-@api_view(['GET'])
 def get_api_versions(request):
+    if request.method not in ['GET']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     return JsonResponse(list(APIVersion.objects.all().values()), safe=False)
 
 
 @csrf_exempt
-@api_view(['GET'])
+@policy(can_manage_api_version, object_arg_name='id')
 def get_latest_api_version(request,id):
+    if request.method not in ['GET']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     try:
-        return JsonResponse(model_to_dict(APIVersion.objects.filter(api_id=id).latest('updated_at')),safe=False)
+        return JsonResponse(model_to_dict(APIVersion.objects.filter(api_id=id, stable=False).latest('updated_at')),safe=False)
     except APIVersion.DoesNotExist:
         return HttpResponseNotFound()
 
 @csrf_exempt
-@api_view(['PUT'])
+@policy(can_manage_api, object_arg_name='id')
 def publish_api_version(request,id):
+    if request.method not in ['PUT']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     request_data = request.data
     try:
         api_version =  APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
@@ -82,8 +101,11 @@ def publish_api_version(request,id):
         return HttpResponseNotFound()
 
 @csrf_exempt
-@api_view([ 'PUT'])
+@policy(can_manage_api, object_arg_name='id')
 def manage_api_version_code(request, id):
+    if request.method not in ['PUT']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     try:
         api_version = APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
     except APIVersion.DoesNotExist:

@@ -3,12 +3,16 @@ from django.forms import model_to_dict
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNotFound
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
 from ..models import *
+from ..lib.policies_wrapper import policy
+from ..policies.environments import *
 
 @csrf_exempt
-@api_view(['GET', 'POST'])
+@policy(can_get_create_environment)
 def get_create_environments(request):
+    if request.method not in ['GET','POST']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     if request.method == 'GET':
         return JsonResponse(list(Environment.objects.all().values()), safe=False)
     elif request.method == 'POST':
@@ -17,8 +21,11 @@ def get_create_environments(request):
         return JsonResponse(model_to_dict(environment), safe=False)
 
 @csrf_exempt
-@api_view(['GET','PUT','DELETE'])
+@policy(can_manage_environment, object_arg_name='id')
 def get_manage_environment(request,id):
+    if request.method not in ['GET','PUT','DELETE']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     if request.method == 'GET':
         environment = get_object_or_404(Environment, id=id)
         return JsonResponse(model_to_dict(environment), safe=False)
@@ -33,5 +40,5 @@ def get_manage_environment(request,id):
         return JsonResponse(model_to_dict(environment), safe=False)
     elif request.method == 'DELETE':
         request_data = request.data
-        Environment.objects.filter(id=request_data['id']).delete()
-        return JsonResponse({'message': "Success"}, code=200)
+        Environment.objects.filter(id=id).delete()
+        return JsonResponse({'message': "Success"}, status=200)

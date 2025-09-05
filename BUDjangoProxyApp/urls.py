@@ -25,7 +25,7 @@ urlpatterns = [
 
     # APIs OPERATIONS
     # GET, POST APIs view
-    path('apis', view=apis.get_create_apis, name='get_create_api_users'),
+    path('apis', view=apis.get_create_apis, name='get_create_apis'),
     # Put, Delete API View
     path('apis/<int:id>', view=apis.get_manage_api, name='manage_apis'),
 
@@ -53,4 +53,9 @@ urlpatterns = [
     # GET Resources by Type
     path('resources/type/<str:type>', view=resources.get_resources_by_type, name='get_resources_by_type'),
 
+    #USERS Operations
+    # GET, POST Users
+    path('users', view=users.get_create_users, name='get_create_users'),
+    # GET, PUT, DELETE Users ID
+    path('users/<int:id>', view=users.get_manage_user, name='get_manage_user'),
 ]

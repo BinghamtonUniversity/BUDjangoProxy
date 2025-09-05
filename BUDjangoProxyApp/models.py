@@ -11,9 +11,17 @@ logger = logging.getLogger(__name__)
 
 
 class User(models.Model):
+    id = models.AutoField(primary_key=True)
     unique_id = models.CharField(max_length=11, unique=True, db_column='unique_id')
     name = models.CharField(max_length=200)
     username = models.CharField(max_length=11, null=True, blank=True)
+    email = models.EmailField(max_length=200, null=True, blank=True)
+    admin = models.BooleanField(default=False, db_column='admin')
+    active = models.BooleanField(default=True, db_column='active')
+    developer = models.BooleanField(default=False, db_column='developer')
+
+    class Meta:
+        db_table = 'users'
 
     def __str__(self):
         return f"{self.name} - {self.unique_id}"
@@ -25,7 +33,7 @@ class Environment(models.Model):
         ('test', 'Testing'),
         ('prod', 'Production'),
     )
-
+    id = models.AutoField(primary_key=True)
     domain = models.CharField(max_length=200, db_index=True, unique=True)
     name = models.CharField(max_length=200)
     type = models.CharField(max_length=10, choices=environment_type, default='dev')
@@ -41,11 +49,12 @@ class Environment(models.Model):
 
 
 class API(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=False)
     description = models.TextField()
     tags = models.CharField(max_length=255, blank=True)
     api_type = models.CharField(max_length=20, default='php', blank=False, null=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,db_column='user_id')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_created_by')
@@ -60,6 +69,7 @@ class API(models.Model):
         ordering = ['name']
 
 class APIVersion(models.Model):
+    id = models.AutoField(primary_key=True)
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_versions',parent_link=True, db_index=True)
     summary = models.CharField(max_length=255, null=True, blank=True)
     description = models.CharField(max_length=255, null=True, blank=True)
@@ -84,6 +94,7 @@ class APIVersion(models.Model):
 
 
 class APIInstance(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, null=True)
     route = models.CharField(max_length=255, db_column='slug')
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance')
@@ -118,6 +129,16 @@ class APIInstance(models.Model):
 
     def get_instance_version_api(self):
         return self.api_version.api
+
+
+class APIDeveloper(models.Model):
+    id = models.AutoField(primary_key=True)
+    api_developer = models.ForeignKey(User, max_length=11, db_column='user_id', to_field='id', on_delete=models.CASCADE)
+    api = models.ForeignKey(API, max_length=11, db_column='api_id', to_field='id', on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = (('api_developer', 'api'))
+        db_table = 'api_developers'
 
 class Resource(models.Model):
     ENVIRONMENT_TYPE = (
@@ -159,6 +180,7 @@ class Resource(models.Model):
 
 
 class APIUser(models.Model):
+    id = models.AutoField(primary_key=True)
     app_name = models.CharField(max_length=255, unique=True, null=False,db_column='app_name',default='api_user')
     app_secret = models.CharField(max_length=255, db_column='app_secret',null=True)  # For storing hashed passwords
     encrypted_app_secret = models.CharField(max_length=255, db_column='encrypted_app_secret',null=True)

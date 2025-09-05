@@ -2,12 +2,16 @@ from django.forms import model_to_dict
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNotFound
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
 from ..models import *
+from ..lib.policies_wrapper import policy
+from ..policies.api_users import *
 
 @csrf_exempt
-@api_view(['GET', 'POST'])
+@policy(can_get_create_api_user)
 def get_create_api_users(request):
+    if request.method not in ['GET','POST']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
     if request.method == 'GET':
         return JsonResponse(list(APIUser.objects.all().values()), safe=False)
     elif request.method == 'POST':
@@ -25,8 +29,10 @@ def get_create_api_users(request):
         return JsonResponse(model_to_dict(api_user), safe=False)
 
 @csrf_exempt
-@api_view(['GET', 'PUT','DELETE'])
+@policy(can_manage_api_user,object_arg_name='id')
 def manage_api_users(request, id):
+    if request.method not in ['GET','PUT','DELETE']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
     if request.method == 'GET':
         request_data = get_object_or_404(APIUser, id=id)
         request_data.encrypted_app_secret = request_data.decrypt_password()
@@ -44,11 +50,13 @@ def manage_api_users(request, id):
     elif request.method == 'DELETE':
         request_data = request.data
         APIUser.objects.filter(id=request_data['id']).delete()
-        return JsonResponse({'message': "Success"}, code=200)
+        return JsonResponse({'message': "Success"}, status=200)
 
 @csrf_exempt
-@api_view(['GET'])
+@policy(can_manage_api_user,object_arg_name='id')
 def decrypted_app_secret(request,id):
+    if request.method not in ['GET']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
     try:
         api_user = APIUser.objects.filter(id=id).first()
         print(api_user.decrypt_password())

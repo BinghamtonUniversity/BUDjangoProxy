@@ -102,6 +102,8 @@ class DynamicAppManager:
                                                     options=api_instance.options)
         urls_code = helpers.prepare_new_url_file(api_version.version_urls)
 
+        # print(api_version.version_files)
+
         # Validate codes
         helpers.validate_code(models_code)
         helpers.validate_code(views_code)
@@ -115,6 +117,11 @@ class DynamicAppManager:
         cls.write_file(os.path.join(app_path, "models.py"), models_code)
         cls.write_file(os.path.join(app_path, "views.py"), views_code)
         cls.write_file(os.path.join(app_path, "urls.py"), urls_code)
+        # Create the helper files
+        for file in api_version.version_files:
+            if file['name'] != '__init__.py' and file['name'] != 'models.py' and file['name'] != 'views.py' and file['name'] != 'urls.py':
+                cls.write_file(os.path.join(app_path, file['name']), file['content'])
+
         cls.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
 
         # Register the models

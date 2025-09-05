@@ -1,12 +1,13 @@
 from django.http import JsonResponse, HttpResponseNotAllowed
-from .models import APIInstance, APIUser, Environment
-from .services.CustomPathResolver import CustomPathResolver
-from .services.VersionControl import VersionControl
-from .services.DynamicLoader import DynamicAppManager
+from BUDjangoProxyApp.models import APIInstance, APIUser, Environment
+from BUDjangoProxyApp.services.CustomPathResolver import CustomPathResolver
+from BUDjangoProxyApp.services.VersionControl import VersionControl
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
 import base64
 
+
 class DynamicRoutingMiddleware:
-    EXCLUDED_PATHS = ['/admin/', '/static/','/api/']  # Routes to be excluded from dynamic routing
+    EXCLUDED_PATHS = ['/static/','/api/']  # Routes to be excluded from dynamic routing
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -141,39 +142,41 @@ class DynamicRoutingMiddleware:
         )
 
 
-# middleware.py
-# import json
-# from django.http import HttpRequest
-# from django.core.exceptions import SuspiciousOperation
-#
-# class NormalizeRequestDataMiddleware:
-#     def __init__(self, get_response):
-#         self.get_response = get_response
-#
-#     def __call__(self, request: HttpRequest):
-#         # Start with GET and POST data
-#         # Initialize an empty dictionary for all request data
-#         all_data = {}
-#
-#         # Add GET parameters
-#         all_data.update(request.GET.items())
-#
-#         # Handle POST data (form data or urlencoded)
-#         if request.method in ['POST', 'PUT']:
-#             # Include POST data (works for application/x-www-form-urlencoded)
-#             all_data.update(request.POST.items())
-#
-#             # Include files if present (multipart/form-data)
-#             if request.FILES:
-#                 files_data = {key: value.name for key, value in request.FILES.items()}
-#                 all_data.update({'files': files_data})  # Add file names as a sub-dictionary
-#
-#             # Handle JSON if content type is application/json
-#             if request.content_type == 'application/json':
-#                 try:
-#                     json_data = json.loads(request.body.decode('utf-8'))
-#                     all_data.update(json_data)
-#                 except (json.JSONDecodeError, UnicodeDecodeError):
-#                     pass  # Fallback to existing data
-#         request.data = all_data
-#         return request
+# customRouting.py
+import json
+from django.http import HttpRequest
+
+class NormalizeRequestDataMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest):
+        # Start with GET and POST data
+        # Initialize an empty dictionary for all request data
+        all_data = {}
+
+        # Add GET parameters
+        all_data.update(request.GET.items())
+
+        # Handle POST data (form data or urlencoded)
+        if request.method in ['POST', 'PUT']:
+            # Include POST data (works for application/x-www-form-urlencoded)
+            all_data.update(request.POST.items())
+
+            # Include files if present (multipart/form-data)
+            if request.FILES:
+                files_data = {key: value.name for key, value in request.FILES.items()}
+                all_data.update({'files': files_data})  # Add file names as a sub-dictionary
+
+            # Handle JSON if content type is application/json
+            if request.content_type == 'application/json':
+                try:
+                    json_data = json.loads(request.body.decode('utf-8'))
+                    all_data.update(json_data)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass  # Fallback to existing data
+
+        request.data = all_data
+
+        return self.get_response(request)
+

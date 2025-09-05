@@ -181,3 +181,5 @@ def resource_fix(resource):
         "user":resource['user'],
         "password":encryptor.decrypt(resource['pass'])
     }
+
+# def prepare_new_files_files(files, resources=None, options=None):
