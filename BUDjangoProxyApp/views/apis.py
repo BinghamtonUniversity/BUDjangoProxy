@@ -104,7 +104,6 @@ def publish_api_version(request,id):
 def manage_api_version_code(request, id):
     if request.method not in ['PUT']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
-    # print(request.data)
     try:
         api_version = APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
     except APIVersion.DoesNotExist:

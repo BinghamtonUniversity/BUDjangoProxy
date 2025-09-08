@@ -27,7 +27,6 @@ class UserAuthenticationMiddleware:
         try:
             # Decode credentials
             auth_data = base64.b64decode(auth_header.split(' ')[1]).decode('utf-8')
-            print(auth_data)
             root_api_user, root_api_password = auth_data.split(':', 1)
         except (IndexError, ValueError, base64.binascii.Error):
             return JsonResponse({'error': 'Invalid authorization header'}, status=401)
@@ -42,17 +41,7 @@ class UserAuthenticationMiddleware:
             if not current_user.active:
                 return JsonResponse({"error": "Unauthorized developer"}, status=403)
         except User.DoesNotExist:
-
-            # current_user = User(unique_id=unique_id, active=True, admin=False, developer=False)
-            # current_user.save()
-
             return JsonResponse({"error": "Unauthorized developer"}, status=403)
-
-
-        # # Admin auth
-        # if root_api_user == self.root_api_user and root_api_password == self.root_api_password:
-        #     request.admin = current_user.admin
-        #     request.developer = current_user.developer
 
         return self.get_response(request)
 
