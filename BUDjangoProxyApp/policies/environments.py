@@ -4,7 +4,7 @@ from ..models import Environment, APIDeveloper
 
 def can_get_create_environment(request):
     if request.method == "GET":
-        is_api_developer = APIDeveloper.objects.filter(user=request.user).exists()
+        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user).exists()
         return request.user.admin or request.user.developer or is_api_developer
 
     if request.user.admin:

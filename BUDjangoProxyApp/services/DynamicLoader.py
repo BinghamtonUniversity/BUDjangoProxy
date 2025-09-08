@@ -96,8 +96,17 @@ class DynamicAppManager:
         # instance_options = {}
         # Prepare the version files
         models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
-        views_code = helpers.prepare_new_views_file(api_version.version_views,
+
+        # Create the helper files
+        for file in api_version.version_files:
+            if file['name'] != '__init__.py' and file['name'] != 'models.py' and file['name'] != 'views.py' and file[
+                'name'] != 'urls.py':
+                cls.write_file(os.path.join(app_path, file['name']), file['content'])
+
+        views_code = helpers.prepare_new_views_file(api_instance.id,
+                                                    api_version.version_views,
                                                     api_version.version_urls,
+                                                    files=api_version.version_files,
                                                     resources=None,
                                                     options=api_instance.options)
         urls_code = helpers.prepare_new_url_file(api_version.version_urls)
@@ -108,6 +117,7 @@ class DynamicAppManager:
         helpers.validate_code(models_code)
         helpers.validate_code(views_code)
         helpers.validate_code(urls_code)
+        # helpers.validate_code()
         # except json.JSONDecodeError as e:
         #     logger.error(f"Failed to decode code_content for APIInstance {api_instance.id}: {e}")
         #     return
@@ -117,10 +127,7 @@ class DynamicAppManager:
         cls.write_file(os.path.join(app_path, "models.py"), models_code)
         cls.write_file(os.path.join(app_path, "views.py"), views_code)
         cls.write_file(os.path.join(app_path, "urls.py"), urls_code)
-        # Create the helper files
-        for file in api_version.version_files:
-            if file['name'] != '__init__.py' and file['name'] != 'models.py' and file['name'] != 'views.py' and file['name'] != 'urls.py':
-                cls.write_file(os.path.join(app_path, file['name']), file['content'])
+
 
         cls.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
 

@@ -4,7 +4,7 @@ from ..models import API, APIDeveloper, APIVersion, APIInstance
 
 def can_get_create_apis(request):
     if request.method == "GET":
-        is_api_developer = APIDeveloper.objects.filter(user=request.user).exists()
+        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id).exists()
         return request.user.admin or request.user.developer or is_api_developer
     else:
         if request.user.admin or request.user.developer:

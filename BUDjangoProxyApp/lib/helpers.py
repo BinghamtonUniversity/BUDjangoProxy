@@ -130,7 +130,7 @@ def prepare_new_models_file(models):
     return f"""from django.db import models\n\n{appended_models}"""
 
 
-def prepare_new_views_file(views, urls, resources=None, options=None):
+def prepare_new_views_file(instance_id,views, urls,files=None, resources=None, options=None):
     appended_views = ""
     for view in views:
         request_param = ""
@@ -146,9 +146,15 @@ def prepare_new_views_file(views, urls, resources=None, options=None):
     
     {view['content'].replace('\n', '\n    ')}
 """
+    appended_files = ""
+    if files is not None:
+        for file in files:
+            appended_files += f"""{file['name'].split(".")[0]} = importlib.import_module("BUDjangoProxyApp.dynamic_apps.{instance_id}.{file['name'].split(".")[0]}")\n"""
 
     return f"""from django.http import JsonResponse
 from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager
+import importlib
+{appended_files}
 {appended_views}
 """
 
@@ -181,5 +187,3 @@ def resource_fix(resource):
         "user":resource['user'],
         "password":encryptor.decrypt(resource['pass'])
     }
-
-# def prepare_new_files_files(files, resources=None, options=None):

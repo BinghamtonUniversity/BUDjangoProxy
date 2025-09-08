@@ -7,7 +7,7 @@ from ..lib.policies_wrapper import policy
 from ..policies.users import *
 
 @csrf_exempt
-@policy(can_create_users)
+@policy(can_get_create_users)
 def get_create_users(request):
     if request.method not in ['GET', 'POST']:
         return JsonResponse({"error":"Method not allowed"}, status=405)

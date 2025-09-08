@@ -1,12 +1,16 @@
 from django.http import request, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from ..models import User
+from ..models import User, APIDeveloper
 
-def can_create_users(request):
-    if request.user.admin:
-        return True
+def can_get_create_users(request):
+    if request.method == "GET":
+        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id).exists()
+        return request.user.admin or request.user.developer or is_api_developer
     else:
-        return False
+        if request.user.admin:
+                return True
+        else:
+            return False
 
 def can_manage_user(request,id):
     try:
