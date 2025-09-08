@@ -59,7 +59,6 @@ def decrypted_app_secret(request,id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
     try:
         api_user = APIUser.objects.filter(id=id).first()
-        print(api_user.decrypt_password())
         return JsonResponse({'app_secret':api_user.decrypt_password()},safe=False)
     except APIUser.DoesNotExist:
         return HttpResponseNotFound()

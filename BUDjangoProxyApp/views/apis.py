@@ -76,9 +76,8 @@ def get_api_versions(request):
 def get_latest_api_version(request,id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
-
     try:
-        return JsonResponse(model_to_dict(APIVersion.objects.filter(api_id=id, stable=False).latest('updated_at')),safe=False)
+        return JsonResponse(model_to_dict(APIVersion.objects.filter(api_id=id).latest('created_at')),safe=False)
     except APIVersion.DoesNotExist:
         return HttpResponseNotFound()
 
