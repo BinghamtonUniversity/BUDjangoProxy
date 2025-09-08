@@ -155,7 +155,7 @@ class Resource(models.Model):
         ('value', 'Value'),
         ('rest', 'REST'),
     ]
-
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     resource_type = models.CharField(
         max_length=10,

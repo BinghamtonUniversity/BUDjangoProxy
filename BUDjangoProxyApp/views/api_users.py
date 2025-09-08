@@ -49,7 +49,7 @@ def manage_api_users(request, id):
         },status=200)
     elif request.method == 'DELETE':
         request_data = request.data
-        APIUser.objects.filter(id=request_data['id']).delete()
+        APIUser.objects.filter(id=id).delete()
         return JsonResponse({'message': "Success"}, status=200)
 
 @csrf_exempt

@@ -57,7 +57,7 @@ def get_manage_api(request, id):
 
         request_data['updated_at'] = timezone.now()
         API.objects.filter(id=id, api_type='python').update(**request_data)
-        return JsonResponse(model_to_dict(API.objects.get(id=request_data['id'])), safe=False)
+        return JsonResponse(model_to_dict(API.objects.get(id=id)), safe=False)
     elif request.method == 'DELETE':
         API.objects.filter(id=id, api_type='python').delete()
         return JsonResponse({'message': "Success"}, status=200)
