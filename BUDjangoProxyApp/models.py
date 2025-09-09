@@ -14,7 +14,7 @@ class User(models.Model):
     id = models.AutoField(primary_key=True)
     unique_id = models.CharField(max_length=11, unique=True, db_column='unique_id')
     name = models.CharField(max_length=200)
-    username = models.CharField(max_length=11, null=True, blank=True)
+    username = models.CharField(max_length=11, unique=True ,null=False, blank=False)
     email = models.EmailField(max_length=200, null=True, blank=True)
     admin = models.BooleanField(default=False, db_column='admin')
     active = models.BooleanField(default=True, db_column='active')

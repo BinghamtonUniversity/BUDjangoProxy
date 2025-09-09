@@ -22,9 +22,9 @@ def get_create_apis(request):
     elif request.method == 'POST':
         try:
             request_data = request.data
-            request_data['created_by_id'] = 1
-            request_data['updated_by_id'] = 1
-            request_data['user_id'] = 1
+            request_data['created_by_id'] = request.user.id
+            request_data['updated_by_id'] = request.user.id
+            request_data['user_id'] = request.user.id
             api = API(**request_data)
             api.save()
             api_version  = APIVersion(api= api,
