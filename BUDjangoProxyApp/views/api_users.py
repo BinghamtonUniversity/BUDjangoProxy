@@ -23,10 +23,13 @@ def get_create_api_users(request):
         except Environment.DoesNotExist:
             return JsonResponse({'error': 'Environment not found'}, status=404)
 
-        api_user = APIUser(**request_data)
-        api_user.set_password(api_user.app_secret)
+        try:
+            api_user = APIUser(**request_data)
+            api_user.set_password(api_user.app_secret)
 
-        return JsonResponse(model_to_dict(api_user), safe=False)
+            return JsonResponse(model_to_dict(api_user), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_api_user,object_arg_name='id')
@@ -38,19 +41,25 @@ def manage_api_users(request, id):
         request_data.encrypted_app_secret = request_data.decrypt_password()
         return JsonResponse(model_to_dict(request_data), safe=False)
     elif request.method == 'PUT':
-        api_user = APIUser.objects.filter(id=id).first()
-        if api_user:
-            print(request.data)
-            api_user.app_name = request.data['app_name']
-            api_user.set_password(request.data['app_secret'])
-            api_user.save()
-        return JsonResponse({
-            'message': "Success"
-        },status=200)
+        try:
+            api_user = APIUser.objects.filter(id=id).first()
+            if api_user:
+                print(request.data)
+                api_user.app_name = request.data['app_name']
+                api_user.set_password(request.data['app_secret'])
+                api_user.save()
+            return JsonResponse({
+                'message': "Success"
+            },status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
     elif request.method == 'DELETE':
-        request_data = request.data
-        APIUser.objects.filter(id=id).delete()
-        return JsonResponse({'message': "Success"}, status=200)
+        try:
+            APIUser.objects.filter(id=id).delete()
+            return JsonResponse({'message': "Success"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_api_user,object_arg_name='id')
@@ -60,5 +69,5 @@ def decrypted_app_secret(request,id):
     try:
         api_user = APIUser.objects.filter(id=id).first()
         return JsonResponse({'app_secret':api_user.decrypt_password()},safe=False)
-    except APIUser.DoesNotExist:
-        return HttpResponseNotFound()
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

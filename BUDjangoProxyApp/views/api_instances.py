@@ -15,9 +15,12 @@ def get_create_api_instances(request):
     if request.method == 'GET':
         return JsonResponse(list(APIInstance.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        api_instance = APIInstance(**request.data)
-        api_instance.save()
-        return JsonResponse(model_to_dict(api_instance), safe=False)
+        try:
+            api_instance = APIInstance(**request.data)
+            api_instance.save()
+            return JsonResponse(model_to_dict(api_instance), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_api_instance,object_arg_name='id')
@@ -29,9 +32,15 @@ def get_manage_api_instance(request, id):
         request_data = get_object_or_404(APIInstance, id=id)
         return JsonResponse(model_to_dict(request_data),safe=False)
     elif request.method == 'PUT':
-        request_data = request.data
-        APIInstance.objects.filter(id=id).update(**request_data)
-        return JsonResponse(model_to_dict(APIInstance.objects.get(id=id)), safe=False)
+        try:
+            request_data = request.data
+            APIInstance.objects.filter(id=id).update(**request_data)
+            return JsonResponse(model_to_dict(APIInstance.objects.get(id=id)), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
-        APIInstance.objects.filter(id=id).delete()
-        return JsonResponse({'message': "Success"}, status=200)
+        try:
+            APIInstance.objects.filter(id=id).delete()
+            return JsonResponse({'message': "Success"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)

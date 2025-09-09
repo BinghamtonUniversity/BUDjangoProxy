@@ -16,9 +16,12 @@ def get_create_environments(request):
     if request.method == 'GET':
         return JsonResponse(list(Environment.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        environment = Environment(**request.data)
-        environment.save()
-        return JsonResponse(model_to_dict(environment), safe=False)
+        try:
+            environment = Environment(**request.data)
+            environment.save()
+            return JsonResponse(model_to_dict(environment), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_environment, object_arg_name='id')
@@ -30,15 +33,20 @@ def get_manage_environment(request,id):
         environment = get_object_or_404(Environment, id=id)
         return JsonResponse(model_to_dict(environment), safe=False)
     elif request.method == 'PUT':
-        environment = Environment.objects.filter(id=id).first()
-        if environment:
-            environment.domain = request.data['domain']
-            environment.name = request.data['name']
-            environment.type = request.data['type']
-            environment.updated_at = timezone.now()
-            environment.save()
-        return JsonResponse(model_to_dict(environment), safe=False)
+        try:
+            environment = Environment.objects.filter(id=id).first()
+            if environment:
+                environment.domain = request.data['domain']
+                environment.name = request.data['name']
+                environment.type = request.data['type']
+                environment.updated_at = timezone.now()
+                environment.save()
+            return JsonResponse(model_to_dict(environment), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
-        request_data = request.data
-        Environment.objects.filter(id=id).delete()
-        return JsonResponse({'message': "Success"}, status=200)
+        try:
+            Environment.objects.filter(id=id).delete()
+            return JsonResponse({'message': "Success"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)

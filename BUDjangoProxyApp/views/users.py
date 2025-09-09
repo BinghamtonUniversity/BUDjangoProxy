@@ -15,9 +15,12 @@ def get_create_users(request):
     if request.method == 'GET':
         return JsonResponse(list(User.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        user = User(**request.data)
-        user.save()
-        return JsonResponse(model_to_dict(user), safe=False)
+        try:
+            user = User(**request.data)
+            user.save()
+            return JsonResponse(model_to_dict(user), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_user, object_arg_name='id')
@@ -29,9 +32,15 @@ def get_manage_user(request, id):
         request_data = get_object_or_404(User, id=id)
         return JsonResponse(model_to_dict(request_data),safe=False)
     elif request.method == 'PUT':
-        request_data = request.data
-        User.objects.filter(id=id).update(**request_data)
-        return JsonResponse(model_to_dict(User.objects.get(id=id)), safe=False)
+        try:
+            request_data = request.data
+            User.objects.filter(id=id).update(**request_data)
+            return JsonResponse(model_to_dict(User.objects.get(id=id)), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
-        User.objects.filter(id=id).delete()
-        return JsonResponse({'message': "Success"}, status=200)
+        try:
+            User.objects.filter(id=id).delete()
+            return JsonResponse({'message': "Success"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)

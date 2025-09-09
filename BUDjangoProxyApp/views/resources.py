@@ -15,10 +15,13 @@ def get_create_resources(request):
     if request.method == 'GET':
         return JsonResponse(list(Resource.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        api_instance = Resource(**request.data)
-        api_instance.config['pass'] = LaravelEncryptor().encrypt(api_instance.config['pass'])
-        api_instance.save()
-        return JsonResponse(model_to_dict(api_instance), safe=False)
+        try:
+            api_instance = Resource(**request.data)
+            api_instance.config['pass'] = LaravelEncryptor().encrypt(api_instance.config['pass'])
+            api_instance.save()
+            return JsonResponse(model_to_dict(api_instance), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_resource,object_arg_name='id')
@@ -30,10 +33,13 @@ def get_manage_resource(request, id):
         request_data = get_object_or_404(Resource, id=id)
         return JsonResponse(model_to_dict(request_data),safe=False)
     elif request.method == 'PUT':
-        request_data = request.data
-        request_data['config']['pass'] = LaravelEncryptor().encrypt(request_data['config']['pass'])
-        Resource.objects.filter(id=id).update(**request_data)
-        return JsonResponse(model_to_dict(Resource.objects.get(id=id)), safe=False)
+        try:
+            request_data = request.data
+            request_data['config']['pass'] = LaravelEncryptor().encrypt(request_data['config']['pass'])
+            Resource.objects.filter(id=id).update(**request_data)
+            return JsonResponse(model_to_dict(Resource.objects.get(id=id)), safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         Resource.objects.filter(id=id).delete()
         return JsonResponse({'message': "Success"}, safe=False)
