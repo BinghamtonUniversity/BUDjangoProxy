@@ -57,8 +57,8 @@ class API(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE,db_column='user_id')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_created_by')
-    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_updated_by')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_created_by',to_field='id')
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_updated_by', to_field='id')
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):

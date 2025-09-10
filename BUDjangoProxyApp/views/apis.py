@@ -34,8 +34,8 @@ def get_create_apis(request):
                                       version_models = [],
                                       version_views = [],
                                       version_urls=[],
-                                      created_by_id=1,
-                                      updated_by_id=1,
+                                      created_by_id=request.user.id,
+                                      updated_by_id=request.user.id,
                                       stable=False)
             api_version.save()
             return JsonResponse(model_to_dict(api), safe=False)
