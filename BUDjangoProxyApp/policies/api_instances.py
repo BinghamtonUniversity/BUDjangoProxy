@@ -28,4 +28,4 @@ def can_manage_api_instance(request,id):
     except APIDeveloper.DoesNotExist:
         return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 
-    return is_api_developer or api_instance.api.user.unique_id == request.user.unique_id, api_instance
+    return request.user.admin or is_api_developer or api_instance.api.user.unique_id == request.user.unique_id, api_instance
