@@ -48,5 +48,30 @@ def can_manage_api_version(request,id):
     except APIDeveloper.DoesNotExist:
         return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 
-    return request.user.admin or is_api_developer or api.user.unique_id == request.user.unique_id, api
+    return is_api_developer or api.user.unique_id == request.user.unique_id, api
 
+
+def can_get_create_api_developers(request, api_id):
+    try:
+        api = API.objects.get(id=api_id)
+    except API.DoesNotExist:
+        return False, JsonResponse({"error": "API Doesn't Exist"}, status=403)
+
+    is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id, api=api_id).exists()
+
+    if request.method == "GET":
+        return is_api_developer or request.user.admin or request.user.developer or api.user.unique_id == request.user.unique_id, api
+
+    elif request.method == 'CREATE':
+        if is_api_developer or request.user.admin or api.user.unique_id == request.user.unique_id:
+            return True, api
+
+def can_manage_api_developers(request,api_id):
+    try:
+        api = API.objects.get(id=api_id)
+    except API.DoesNotExist:
+        return False, JsonResponse({"error": "API Doesn't Exist"}, status=403)
+
+    if request.method == 'DELETE':
+        if request.user.admin or api.user.unique_id == request.user.unique_id:
+            return True, api

@@ -39,6 +39,12 @@ urlpatterns = [
     # PUT API Version -> Publish the API
     path('apis/<int:id>/publish', view=apis.publish_api_version, name='publish_api_version'),
 
+    # GET/CREATE API Developer
+    path('apis/<int:api_id>/developers', view=apis.get_create_api_developer, name='get_create_api_developer'),
+    # DELETE API Developer
+    path('apis/<int:api_id>/developers/<int:user_id>', view=apis.delete_api_developer, name='delete_api_developers'),
+
+
     # API INSTANCES Operations
     # GET, POST API Instance(s)
     path('api_instances', view=api_instances.get_create_api_instances, name='get_create_api_instances'),
@@ -58,4 +64,5 @@ urlpatterns = [
     path('users', view=users.get_create_users, name='get_create_users'),
     # GET, PUT, DELETE Users ID
     path('users/<int:id>', view=users.get_manage_user, name='get_manage_user'),
+    path('users/<int:user_id>/apis', view=users.get_user_apis, name='get_user_apis'),
 ]

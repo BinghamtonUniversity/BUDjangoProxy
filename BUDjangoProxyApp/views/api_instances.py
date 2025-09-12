@@ -9,18 +9,21 @@ from ..policies.api_instances import *
 @csrf_exempt
 @policy(can_get_create_api_instance)
 def get_create_api_instances(request):
+
+
     if request.method not in ['GET', 'POST']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
         return JsonResponse(list(APIInstance.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        try:
-            api_instance = APIInstance(**request.data)
-            api_instance.save()
-            return JsonResponse(model_to_dict(api_instance), safe=False)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        # try:
+        api_instance = APIInstance(**request.data)
+
+        api_instance.save()
+        return JsonResponse(model_to_dict(api_instance), safe=False)
+        # except Exception as e:
+        #     return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_api_instance,object_arg_name='id')
