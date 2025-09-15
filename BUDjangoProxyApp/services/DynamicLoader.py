@@ -10,6 +10,8 @@ import ast
 import astor
 from ..lib import helpers
 from dotenv import dotenv_values
+from django.db import connections
+from BUDjangoProxyApp.services.OracleDB import OracleDB
 
 env_values = dotenv_values(".env")
 
@@ -20,7 +22,8 @@ class DynamicAppManager:
     instance_model_registry = {}
     instance_view_registry = {}
     instance_url_registry = {}
-    instance_settings_registry = {}
+    instance_db_registry = {}
+
 
     # To Load instances
     @classmethod
@@ -53,12 +56,20 @@ class DynamicAppManager:
         """
         Get the path for a dynamic app based on the instance route.
         """
-        print("Writing dynamic app path")
 
         dynamic_root = os.path.join(settings.BASE_DIR,"BUDjangoProxyApp", "dynamic_apps")
         app_path = os.path.join(dynamic_root, f"{instance_id}")
         os.makedirs(app_path, exist_ok=True)
         return app_path
+
+    @classmethod
+    def register_db(cls, instance_id, db_instance):
+        cls.instance_db_registry[instance_id] = db_instance
+
+
+    @classmethod
+    def get_db(cls, instance_id):
+        return cls.instance_db_registry.get(instance_id)
 
     @staticmethod
     def write_file(path, content):
@@ -77,6 +88,9 @@ class DynamicAppManager:
         app_path = cls.get_app_path(api_instance.id)
         api_version = api_instance.get_instance_version()
 
+
+        models_code = None
+
         if not api_version:
             return JsonResponse({"error":"Version does not exist"})
 
@@ -86,20 +100,29 @@ class DynamicAppManager:
                                filter(id__in=[int(res['resource'])
                                               for res in api_instance.resources
                                               if 'resource' in res]).values())
-                          },
+                          } if api_instance.resources else {},
             "instance_mappings": api_instance.resources,
             "version_resources": api_version.resources
         }
 
         # try:
             # code_content = json.loads(version.code_content)
-        # instance_options = {}
         # Prepare the version files
-        models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
+        if len(api_version.version_models)>0:
+            models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
+
+        class_config = OracleDB()
+        for db in resources_mapping['instance_mappings']:
+            found_db_resource = resources_mapping['resources'][int(db['resource'])]
+            found_config = helpers.resource_fix(found_db_resource['config'])
+            ready_config = helpers.prepare_new_resource_db(found_db_resource['resource_type'], found_config)
+            class_config.config_database(db['name'], ready_config)
+
+        cls.register_db(api_instance.id, class_config)
 
         # Create the helper files
         for file in api_version.version_files:
-            if file['name'] != '__init__.py' and file['name'] != 'models.py' and file['name'] != 'views.py' and file[
+            if file['name']!="" and file['name'] !='' and file['name'] != '__init__.py' and file['name'] != 'models.py' and file['name'] != 'views.py' and file[
                 'name'] != 'urls.py':
                 cls.write_file(os.path.join(app_path, file['name']), file['content'])
 
@@ -111,10 +134,10 @@ class DynamicAppManager:
                                                     options=api_instance.options)
         urls_code = helpers.prepare_new_url_file(api_version.version_urls)
 
-        # print(api_version.version_files)
-
         # Validate codes
-        helpers.validate_code(models_code)
+        if models_code:
+            helpers.validate_code(models_code)
+
         helpers.validate_code(views_code)
         helpers.validate_code(urls_code)
         # helpers.validate_code()
@@ -124,7 +147,8 @@ class DynamicAppManager:
 
         # Write apps to the files first
         cls.write_file(os.path.join(app_path, "__init__.py"), "")  # Ensure it's a Python package
-        cls.write_file(os.path.join(app_path, "models.py"), models_code)
+        if models_code:
+            cls.write_file(os.path.join(app_path, "models.py"), models_code)
         cls.write_file(os.path.join(app_path, "views.py"), views_code)
         cls.write_file(os.path.join(app_path, "urls.py"), urls_code)
 
@@ -132,7 +156,9 @@ class DynamicAppManager:
         cls.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
 
         # Register the models
-        cls.register_models(api_instance.id, models_code, resources_mapping)
+        if models_code:
+            cls.register_models(api_instance.id, models_code, resources_mapping)
+
         cls.register_views(api_instance.id, views_code)
         cls.register_urls(api_instance.id, urls_code)
 
@@ -177,11 +203,14 @@ class Instance{instance_id}Config(AppConfig):
                     if not hasattr(obj, "_meta"):
                         obj._meta = type("_meta", (), {})
 
+                    if not resources_mapping['resources']:
+                        return
+
                     filtered_resources = {res['model_name']: res['name'] for res in resources_mapping['version_resources']
                                           if res['type'] == 'Model'}
+
                     # Model DB settings and registration before the model registration
                     if obj_name in filtered_resources:
-
                         version_resource = filtered_resources[obj_name]
                         api_mapping = next((e for e in resources_mapping['instance_mappings'] if e['name'] == version_resource), None)
                         if api_mapping:
@@ -189,8 +218,16 @@ class Instance{instance_id}Config(AppConfig):
                                 found_resource = resources_mapping['resources'][int(api_mapping['resource'])]
                                 found_config = helpers.resource_fix(found_resource['config'])
                                 if api_mapping['name'] != 'default':
-                                    settings.DATABASES[api_mapping['name']] = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
-                                obj._meta.db_name= api_mapping['name']
+                                    db_config = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
+                                    db_alias = f"{api_mapping['name']}_{instance_id}"
+
+                                    obj._meta.db_alias = db_alias
+                                    obj._meta.db_config = db_config
+
+                                    if db_alias not in connections.databases:
+                                        connections.databases[db_alias] = db_config
+
+                                obj._meta.db_name= db_alias
 
                     cls.instance_model_registry[instance_id][obj_name] = obj
                     logger.info(f"Registered models for instance {instance_id}")

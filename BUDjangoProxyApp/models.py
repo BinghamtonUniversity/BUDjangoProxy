@@ -113,10 +113,11 @@ class APIInstance(models.Model):
     def __str__(self):
         return f"{self.name} ({self.environment.type})"
 
+
     def get_instance_version(self):
         if self.api_version is None:
             try:
-                return APIVersion.objects.filter(api=self.api).latest('updated_at')
+                return APIVersion.objects.filter(api=self.api).latest('created_at')
             except APIVersion.DoesNotExist:
                 return None
         elif self.api_version == 0:

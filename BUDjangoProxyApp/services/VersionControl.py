@@ -10,7 +10,7 @@ class VersionControl():
         except APIVersion.DoesNotExist:
             return False
 
-        print(f"{DYNAMIC_APPS_DIR}/{api_instance.id}/api_version.json")
+
         if os.path.exists(f"{DYNAMIC_APPS_DIR}/{api_instance.id}/api_version.json"):
             version_file = helpers.load_into_dict(f"{DYNAMIC_APPS_DIR}/{api_instance.id}/api_version.json")
             if str(api_version_metadata.updated_at) != version_file['updated_at']:

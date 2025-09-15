@@ -155,6 +155,7 @@ def prepare_new_views_file(instance_id,views, urls,files=None, resources=None, o
 from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager
 import importlib
 {appended_files}
+oracledb = DataProxyManager.get_db({instance_id})
 {appended_views}
 """
 
