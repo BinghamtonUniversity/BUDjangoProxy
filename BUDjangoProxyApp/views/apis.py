@@ -136,11 +136,11 @@ def get_create_api_developer(request, api_id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(APIDeveloper.objects.filter(api=api_id).values()), safe=False)
+        return JsonResponse(list(APIDeveloper.objects.filter(api_id=api_id).values()), safe=False)
 
     elif request.method == 'POST':
         try:
-            api_developer = APIDeveloper(api = api_id, api_developer = request.data['user_id'])
+            api_developer = APIDeveloper(api_id = api_id, api_developer_id = request.data['user_id'])
             api_developer.save()
             return JsonResponse(model_to_dict(api_developer), safe=False)
         except Exception as e:

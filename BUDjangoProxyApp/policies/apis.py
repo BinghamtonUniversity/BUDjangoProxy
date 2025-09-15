@@ -62,7 +62,7 @@ def can_get_create_api_developers(request, api_id):
     if request.method == "GET":
         return is_api_developer or request.user.admin or request.user.developer or api.user.unique_id == request.user.unique_id, api
 
-    elif request.method == 'CREATE':
+    elif request.method == 'POST':
         if is_api_developer or request.user.admin or api.user.unique_id == request.user.unique_id:
             return True, api
 
