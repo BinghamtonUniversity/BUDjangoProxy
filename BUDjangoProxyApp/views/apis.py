@@ -153,7 +153,7 @@ def delete_api_developer(request,api_id,user_id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     try:
-        APIDeveloper.objects.filter(api_id=api_id, user_id=user_id).delete()
+        APIDeveloper.objects.filter(api=api_id, api_developer_id=user_id).delete()
         return JsonResponse({'message': "Success"}, status=200)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
