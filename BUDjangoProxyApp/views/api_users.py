@@ -44,7 +44,6 @@ def manage_api_users(request, id):
         try:
             api_user = APIUser.objects.filter(id=id).first()
             if api_user:
-                print(request.data)
                 api_user.app_name = request.data['app_name']
                 api_user.set_password(request.data['app_secret'])
                 api_user.save()

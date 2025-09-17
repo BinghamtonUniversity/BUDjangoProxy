@@ -62,7 +62,6 @@ class DynamicRoutingMiddleware:
         view_func, args, kwargs = custom_resolver.resolve(request, api_instance, refresh_required=refresh_required)
 
         version_urls = api_instance.get_instance_version().version_urls
-        # print('version_urls', version_urls)
         current_version_url = next((url for url in version_urls if view_func.__name__ == url['view_name']), None)
         if request.method != "ALL" and request.method != current_version_url['verb']:
             return HttpResponseNotAllowed(request.method, f"{request.method} method not allowed for this route")
@@ -103,13 +102,10 @@ class DynamicRoutingMiddleware:
                 return self.prompt_for_credentials()
             # Check if the user can use the request method
             if next((e for e in request_user_routes if e['verb'] == "ALL" and e['route'] ==""), None):
-                print("user has ALL for all routes")
                 return api_user
             elif next((e for e in request_user_routes if e['verb'] == "ALL" and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
-                print("user has ALL for this route")
                 return api_user
             elif next((e for e in request_user_routes if e['verb'] == request.method and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
-                print(f"user has {request.method} for this route")
                 return api_user
             # API User Path security enforcement
             else:

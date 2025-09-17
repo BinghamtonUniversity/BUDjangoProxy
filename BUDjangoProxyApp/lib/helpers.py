@@ -15,9 +15,8 @@ def save_result_file(out_file, data):
         with open(out_file, 'w') as file:
             file.write(json.dumps(data))
             file.close()
-            print(out_file + " has been saved with: " + str(len(data))+ " records!")
     except Exception as e:
-            print(f"Failed to save errors to {out_file}: {e}")
+        raise e
 
 def validate_code(code, code_type="python", context_lines=2):
     """
@@ -116,7 +115,7 @@ def prepare_new_models_file(models):
         appended_models += f"""    class Meta:\n"""
         for meta in model.get('class_meta', []):
             if meta['value'] != "default":
-                appended_models += f"""        {meta['name']} = '{meta['value'].replace('\n', '\n        ')}'\n"""
+                appended_models += f"""        {meta['name']} = '"{'"."'.join(meta['value'].split(".")).replace('\n', '\n        ')}"'\n"""
         appended_models += "\n"  # Add a newline after Meta
 
         # Add class methods if they exist
@@ -149,12 +148,14 @@ def prepare_new_views_file(instance_id,views, urls,files=None, resources=None, o
     appended_files = ""
     if files is not None:
         for file in files:
-            appended_files += f"""{file['name'].split(".")[0]} = importlib.import_module("BUDjangoProxyApp.dynamic_apps.{instance_id}.{file['name'].split(".")[0]}")\n"""
+            if 'name' in file and file['name'] is not None and file['name'] != '':
+                appended_files += f"""{file['name'].split(".")[0]} = importlib.import_module("BUDjangoProxyApp.dynamic_apps.{instance_id}.{file['name'].split(".")[0]}")\n"""
 
     return f"""from django.http import JsonResponse
 from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager
 import importlib
 {appended_files}
+
 oracledb = DataProxyManager.get_db({instance_id})
 {appended_views}
 """

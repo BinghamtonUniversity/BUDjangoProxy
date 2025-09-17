@@ -228,10 +228,11 @@ class Instance{instance_id}Config(AppConfig):
                                     if db_alias not in connections.databases:
                                         connections.databases[db_alias] = db_config
 
-                                obj._meta.db_name= db_alias
+                                obj._meta.db_name = db_alias
 
                     cls.instance_model_registry[instance_id][obj_name] = obj
                     logger.info(f"Registered models for instance {instance_id}")
+                    # print(connections.databases)
 
         except Exception as e:
             raise Exception(f"Failed to register models for instance {instance_id}: {e}")
