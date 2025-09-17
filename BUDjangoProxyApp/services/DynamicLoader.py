@@ -112,11 +112,12 @@ class DynamicAppManager:
             models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
 
         class_config = OracleDB()
-        for db in resources_mapping['instance_mappings']:
-            found_db_resource = resources_mapping['resources'][int(db['resource'])]
-            found_config = helpers.resource_fix(found_db_resource['config'])
-            ready_config = helpers.prepare_new_resource_db(found_db_resource['resource_type'], found_config)
-            class_config.config_database(db['name'], ready_config)
+        if resources_mapping['instance_mappings'] is not None:
+            for db in resources_mapping['instance_mappings']:
+                found_db_resource = resources_mapping['resources'][int(db['resource'])]
+                found_config = helpers.resource_fix(found_db_resource['config'])
+                ready_config = helpers.prepare_new_resource_db(found_db_resource['resource_type'], found_config)
+                class_config.config_database(db['name'], ready_config)
 
         cls.register_db(api_instance.id, class_config)
 
@@ -300,12 +301,6 @@ class Instance{instance_id}Config(AppConfig):
 
         if not api_version:
             return JsonResponse({"error": "Version does not exist"})
-
-        # File integrity check to ensure that the most up-to date file is coming from the server
-        # version_control = VersionControl()
-        # if not version_control.file_integrity_check(api_instance):
-        #     cls.load_api_instance(api_instance)
-
 
         view_func = instance_views.get(view_name)
         cls.current_instance_id = instance_id

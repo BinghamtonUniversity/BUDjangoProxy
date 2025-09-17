@@ -52,11 +52,7 @@ class DynamicRoutingMiddleware:
         # Attach authenticated user and API instance to the request
         request.api_user = api_user
         request.api_instance = api_instance
-        # Ensure that requested path allow the request method
-        # version_urls = api_instance.get_instance_version().version_urls
-        # print('version_urls',version_urls)
-        # current_version_url = next((url for url in version_urls if path[1:]== url['path']), None)
-        # print('current_one',current_version_url)
+
 
         custom_resolver = CustomPathResolver()
         # Fixing the incoming URL for the URLs file
@@ -100,14 +96,11 @@ class DynamicRoutingMiddleware:
             if not api_user.is_active:
                 return JsonResponse({'error': 'User account is inactive'}, status=403)
 
-            # print('api_instance',api_instance.route_user_map)
             request_user_routes = list(filter(lambda e: int(e['api_user']) == api_user.id, api_instance.route_user_map))
 
-            # request.method
             # Check if the user is one of the users that can access to the instance
             if len(request_user_routes) == 0:
                 return self.prompt_for_credentials()
-            # print('request_user', request_user)
             # Check if the user can use the request method
             if next((e for e in request_user_routes if e['verb'] == "ALL" and e['route'] ==""), None):
                 print("user has ALL for all routes")
@@ -121,8 +114,6 @@ class DynamicRoutingMiddleware:
             # API User Path security enforcement
             else:
                 return self.prompt_for_credentials()
-            # if request_user['route']!= "" and not request.path.startswith(f"/{api_instance.route}{request_user['route']}"):
-            #     return self.prompt_for_credentials()
 
         except APIUser.DoesNotExist:
             return self.prompt_for_credentials()

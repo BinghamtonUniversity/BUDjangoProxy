@@ -5,12 +5,13 @@ from django.views.decorators.csrf import csrf_exempt
 from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.api_instances import *
+import os
+import shutil
+import BUDjangoProxy.settings as settings
 
 @csrf_exempt
 @policy(can_get_create_api_instance)
 def get_create_api_instances(request):
-
-
     if request.method not in ['GET', 'POST']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
@@ -44,6 +45,9 @@ def get_manage_api_instance(request, id):
     elif request.method == 'DELETE':
         try:
             APIInstance.objects.filter(id=id).delete()
+
+            instance_folder = os.path.join(settings.BASE_DIR, "BUDjangoProxyApp", "dynamic_apps",f"{id}")
+            shutil.rmtree(instance_folder)
             return JsonResponse({'message': "Success"}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
