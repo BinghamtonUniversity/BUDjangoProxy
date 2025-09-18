@@ -1,5 +1,6 @@
 import logging
 import json
+from django.forms import model_to_dict
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values, DYNAMIC_APPS_DIR
 
@@ -189,3 +190,16 @@ def resource_fix(resource):
         "user":resource['user'],
         "password":encryptor.decrypt(resource['pass'])
     }
+
+def instance_to_dict(instance, with_relations=None):
+    data = model_to_dict(instance)
+    if with_relations:
+        for rel in with_relations:
+            related = getattr(instance, rel, None)
+            if related is None:
+                data[rel] = None
+            elif hasattr(related, "all"):  # ManyToMany
+                data[rel] = [model_to_dict(r) for r in related.all()]
+            else:  # ForeignKey/OneToOne
+                data[rel] = model_to_dict(related)
+    return data

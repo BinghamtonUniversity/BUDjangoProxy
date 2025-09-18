@@ -101,7 +101,7 @@ class DynamicRoutingMiddleware:
             if len(request_user_routes) == 0:
                 return self.prompt_for_credentials()
             # Check if the user can use the request method
-            if next((e for e in request_user_routes if e['verb'] == "ALL" and e['route'] ==""), None):
+            if next((e for e in request_user_routes if e['verb'] == "ALL" and (e['route'] =="*")), None):
                 return api_user
             elif next((e for e in request_user_routes if e['verb'] == "ALL" and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
                 return api_user

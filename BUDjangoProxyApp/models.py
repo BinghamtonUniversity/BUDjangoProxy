@@ -90,16 +90,14 @@ class APIVersion(models.Model):
 
     class Meta:
         db_table = "api_versions"
-        # ordering = ['name']
-
 
 class APIInstance(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, null=True)
     route = models.CharField(max_length=255, db_column='slug')
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance')
-    api_version = models.ForeignKey(APIVersion, default=None, null=True, blank=True, on_delete=models.CASCADE, related_name='version_instance')
-    environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True)
+    api_version_id = models.ForeignKey(APIVersion, default=None, null=True, db_column='api_version_id', blank=True, on_delete=models.CASCADE, related_name='version_instance')
+    environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True, related_name='environment_instance')
     resources = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False)
     options = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False)
     route_user_map = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, db_column='route_user_map', null=True)
@@ -113,20 +111,27 @@ class APIInstance(models.Model):
     def __str__(self):
         return f"{self.name} ({self.environment.type})"
 
+    @property
+    def api_version(self):
+        if self.api_version_id:
+            return self.api_version_id
+
+        return self.get_instance_version()
+
 
     def get_instance_version(self):
-        if self.api_version is None:
+        if self.api_version_id is None:
             try:
                 return APIVersion.objects.filter(api=self.api).latest('created_at')
             except APIVersion.DoesNotExist:
                 return None
-        elif self.api_version == 0:
+        elif self.api_version_id == 0:
             try:
                 return APIVersion.objects.filter(api=self.api, stable=True).latest('updated_at')
             except APIVersion.DoesNotExist:
                 return None
         else:
-            return self.api_version
+            return self.api_version_id
 
     def get_instance_version_api(self):
         return self.api_version.api
@@ -161,12 +166,14 @@ class Resource(models.Model):
     resource_type = models.CharField(
         max_length=10,
         choices=RESOURCE_TYPE_CHOICES,
-        default='mysql'
+        default='mysql',
+        db_index=True
     )
     type = models.CharField(
         max_length=10,
         choices=ENVIRONMENT_TYPE,
-        default='dev'
+        default='dev',
+        db_index=True
     )
     config = models.JSONField(default=None, encoder=DjangoJSONEncoder)
 
@@ -216,7 +223,6 @@ class APIUser(models.Model):
             return bcrypt.checkpw(password_bytes, hashed_bytes)
         except ValueError as e:
             # Handle invalid hash format (e.g., wrong length or prefix)
-            print(f"Error checking password: {e}")
             return False
 
     def decrypt_password(self):
@@ -226,8 +232,53 @@ class APIUser(models.Model):
     def __str__(self):
         return self.app_name
 
-# Observers/ Signals
+class Scheduler(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    cron = models.CharField(max_length=255)
+    api_instance = models.ForeignKey(APIInstance, to_field='id',db_column='api_instance_id', on_delete=models.CASCADE)
+    args = models.JSONField(default=None, encoder=DjangoJSONEncoder)
+    verb = models.CharField(default='GET', max_length=255)
+    enabled = models.BooleanField(default=True, db_column='enabled')
+    last_exec_cron = models.DateTimeField(null=True)
+    last_exec_start = models.DateTimeField(null=True)
+    last_exec_stop = models.DateTimeField(null=True)
+    last_response = models.JSONField(default=None, encoder=DjangoJSONEncoder)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
+    class Meta:
+        db_table = 'scheduler'
+        ordering = ['name']
+
+ACTIVITY_ACTION_TYPES = [
+    ('POST', 'POST'),
+    ('PUT', 'PUT'),
+    ('GET', 'GET'),
+    ('PATCH', 'PATCH'),
+    ('DELETE', 'DELETE')
+]
+class ActivityLog(models.Model):
+    id = models.AutoField(primary_key=True)
+    event_id = models.IntegerField(db_column='event_id')
+    action = models.CharField(
+        max_length=10,
+        choices=ACTIVITY_ACTION_TYPES,
+        default='dev',
+        db_column='action',
+        db_index=True
+    )
+    event = models.CharField(max_length=255, db_column='event', null=True,blank=True)
+    user_id = models.ForeignKey(User, to_field='id', db_column='user_id', on_delete=models.CASCADE)
+    comment = models.CharField(max_length=255, db_column='comment', null=True,blank=True)
+    new = models.JSONField(default=None, encoder=DjangoJSONEncoder)
+    old = models.JSONField(default=None, encoder=DjangoJSONEncoder)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+
+# Observers/ Signals
 # Signal to reload the project when a snippet is saved
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver

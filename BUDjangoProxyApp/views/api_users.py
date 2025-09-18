@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.api_users import *
+from BUDjangoProxyApp.lib.helpers import instance_to_dict
 
 @csrf_exempt
 @policy(can_get_create_api_user)
