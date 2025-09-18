@@ -68,11 +68,12 @@ def get_manage_api(request, id):
 
 
 @csrf_exempt
-def get_api_versions(request):
+def get_api_versions(request, id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    return JsonResponse(list(APIVersion.objects.all().values()), safe=False)
+    return JsonResponse(list(APIVersion.objects.filter(api_id=id).values('id','description','summary','stable','created_at')), safe=False)
+
 
 
 @csrf_exempt
