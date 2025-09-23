@@ -25,7 +25,7 @@ def get_create_api_instances(request):
             api_instance.save()
             response_data = instance_to_dict(api_instance, ['api', 'environment', 'api_version'])
 
-            return JsonResponse(model_to_dict(response_data), safe=False)
+            return JsonResponse(response_data, safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
