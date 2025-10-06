@@ -1,5 +1,7 @@
 import logging
 import json
+from unittest import case
+
 from django.forms import model_to_dict
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values, DYNAMIC_APPS_DIR
@@ -58,6 +60,15 @@ def validate_code(code, code_type="python", context_lines=2):
             logger.error(error_message)
             raise SyntaxError(error_message)
 
+
+def db_resource_fix(resource):
+    encryptor = LaravelEncryptor(env_values['LARAVEL_APP_KEY'])
+
+    return {
+        "name":resource['tns'],
+        "user":resource['user'],
+        "password":encryptor.decrypt(resource['pass'])
+    }
 
 def prepare_new_resource_db(type, resource):
     match type:
@@ -130,8 +141,12 @@ def prepare_new_models_file(models):
     return f"""from django.db import models\n\n{appended_models}"""
 
 
-def prepare_new_views_file(instance_id,views, urls,files=None, resources=None, options=None):
+def prepare_new_views_file(instance_id, models, views, urls,files=None):
     appended_views = ""
+    imported_models = ""
+    for model in models:
+        if 'name' in model and model['name'] is not None and model['name'] != '':
+            imported_models += f"""{model['name']} = DataProxyManager.get_model('{model['name']}')\n"""
     for view in views:
         request_param = ""
         request_params = next((url for url in urls if url['view_name'] == view['name']), None)
@@ -139,10 +154,8 @@ def prepare_new_views_file(instance_id,views, urls,files=None, resources=None, o
             required_params = [param['name'] for param in request_params['required']]
             request_param = ",".join(required_params)
 
-        appended_views += f"""def {view['name']}(request{","+request_param if request_param!="" else ''}):
-    args = request.args if hasattr(request,'args') else None
-    options = {options if options is not None else 'None'}
-    resources = {resources if resources is not None else 'None'}
+        appended_views += f"""def {view['name']}(request{","+request_param if request_param!="" else ''}, args=None, resources=None, options=None):
+    {imported_models.replace('\n', '\n    ')}
     
     {view['content'].replace('\n', '\n    ')}
 """
@@ -182,14 +195,7 @@ from .views import *
 urlpatterns = [{",\n".join(url_patterns)}]
     """
 
-def resource_fix(resource):
-    encryptor = LaravelEncryptor(env_values['LARAVEL_APP_KEY'])
 
-    return {
-        "name":resource['tns'],
-        "user":resource['user'],
-        "password":encryptor.decrypt(resource['pass'])
-    }
 
 def instance_to_dict(instance, with_relations=None):
     data = model_to_dict(instance)
@@ -203,3 +209,26 @@ def instance_to_dict(instance, with_relations=None):
             else:  # ForeignKey/OneToOne
                 data[rel] = model_to_dict(related)
     return data
+
+# Preparing the resources for the
+def prepare_instance_resources(resources):
+    encryptor = LaravelEncryptor(env_values['LARAVEL_APP_KEY'])
+    response_data = {}
+
+    for res in resources['instance_mappings']:
+        found_resource = resources['resources'][int(res['resource'])]
+        match found_resource['resource_type']:
+            case "secret":
+                response_data[res['name']] = encryptor.decrypt(found_resource['config']['value'])
+            case "value":
+                response_data[res['name']] = found_resource['config']['value']
+            case "oracle":
+                response_data[res['name']] = db_resource_fix(found_resource['config'])
+            case "mysql":
+                response_data[res['name']] = db_resource_fix(found_resource['config'])
+            case "sqlsrv":
+                response_data[res['name']] = db_resource_fix(found_resource['config'])
+            case _:
+                response_data[res['name']] = None
+
+    return response_data

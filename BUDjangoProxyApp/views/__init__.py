@@ -4,6 +4,8 @@ from . import environments
 from . import api_instances
 from . import resources
 from . import users
+from . import schedulers
+from . import activity_logs
 # from . import action_reason_codes
 # from . import degrees
 # from . import nonemployees
@@ -15,4 +17,4 @@ from . import users
 # from . import logging
 # from . import banner
 
-__all__ = ['apis', 'api_users', 'environments','api_instances','resources','users']
+__all__ = ['apis', 'api_users', 'environments','api_instances','resources','users','schedulers','activity_logs']

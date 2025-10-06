@@ -51,15 +51,20 @@ class CustomPathResolver:
         # Create a URLResolver directly with the dynamic patterns
         resolver = URLResolver(RegexPattern(r'^/'), urlconf_name=dynamic_urlconf)
 
+        print("resolver", resolver)
+
         # Rewrite the request path to match the dynamic URL patterns
-        adjusted_path = '/' + '/'.join(request_path[1:]) + ('/' if request.path.endswith('/') else '')
+        adjusted_path = '//'+'/'.join(request_path[1:]) + ('/' if request.path.endswith('/') else '')
         request.path_info = adjusted_path
+        print(f"Adjusted path: {adjusted_path}")
 
         resolver_match = resolver.resolve(adjusted_path)
 
         view_func = resolver_match.func
         args = resolver_match.args
         kwargs = resolver_match.kwargs
+        print(f"View function Name: {view_func.__name__}, args: {args}, kwargs: {kwargs}")
+
 
         # Call the view function through the resolver
         return view_func, args, kwargs

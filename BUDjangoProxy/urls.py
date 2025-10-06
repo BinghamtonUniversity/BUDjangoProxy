@@ -25,5 +25,5 @@ def index(request):
     return JsonResponse({'message': 'Welcome to Dynamic App Manager'})
 urlpatterns = [
     # path('admin/', admin.site.urls),
-    path('api', include(api_urls))
+    path('api/', include(api_urls))
 ]

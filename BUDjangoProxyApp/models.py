@@ -73,7 +73,7 @@ class APIVersion(models.Model):
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_versions',parent_link=True, db_index=True)
     summary = models.CharField(max_length=255, null=True, blank=True)
     description = models.CharField(max_length=255, null=True, blank=True)
-    stable = models.BooleanField(default=False)
+    stable = models.BooleanField(default=False, db_index=True)
     version_models = models.JSONField()
     version_views = models.JSONField(db_column='functions', default=list, null=True, blank=True)
     version_urls = models.JSONField(db_column='routes', default=list, null=True, blank=True)
@@ -139,8 +139,8 @@ class APIInstance(models.Model):
 
 class APIDeveloper(models.Model):
     id = models.AutoField(primary_key=True)
-    api_developer = models.ForeignKey(User, max_length=11, db_column='user_id', to_field='id', on_delete=models.CASCADE)
-    api = models.ForeignKey(API, max_length=11, db_column='api_id', to_field='id', on_delete=models.CASCADE)
+    api_developer = models.ForeignKey(User, db_column='user_id', to_field='id', on_delete=models.CASCADE)
+    api = models.ForeignKey(API, db_column='api_id', to_field='id', on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (('api_developer', 'api'))
@@ -152,14 +152,13 @@ class Resource(models.Model):
         ('test', 'Testing'),
         ('prod', 'Production'),
     )
-    # name = models.CharField(max_length=100)
     RESOURCE_TYPE_CHOICES = [
         ('oracle', 'Oracle'),
         ('mysql', 'MySQL'),
         ('sqlsrv', 'SQL Server'),
         ('secret', 'Secret'),
         ('value', 'Value'),
-        ('rest', 'REST'),
+        ('rest', 'REST')
     ]
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
@@ -259,7 +258,7 @@ ACTIVITY_ACTION_TYPES = [
     ('DELETE', 'DELETE')
 ]
 class ActivityLog(models.Model):
-    id = models.AutoField(primary_key=True)
+    id = models.AutoField(primary_key=True,)
     event_id = models.IntegerField(db_column='event_id')
     action = models.CharField(
         max_length=10,
@@ -302,7 +301,7 @@ def reload_api_version(sender, instance, **kwargs):
 def validate_code(sender, instance=None, **kwargs):
     models = helpers.prepare_new_models_file(instance.version_models)
     urls = helpers.prepare_new_url_file(instance.version_urls)
-    views = helpers.prepare_new_views_file(instance.id,instance.version_views,instance.version_urls)
+    views = helpers.prepare_new_views_file(instance.id, instance.version_models,instance.version_views,instance.version_urls)
 
     helpers.validate_code(models)
     helpers.validate_code(views)

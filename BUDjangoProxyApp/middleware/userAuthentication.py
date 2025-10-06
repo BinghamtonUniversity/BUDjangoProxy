@@ -1,5 +1,7 @@
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.utils.translation.trans_null import activate
+from django.utils.deprecation import MiddlewareMixin
+
 
 from BUDjangoProxyApp.models import User, APIDeveloper
 import base64
@@ -55,3 +57,10 @@ class UserAuthenticationMiddleware:
             status=401,
             headers={'WWW-Authenticate': 'Basic realm="API"'}
         )
+
+class NoCacheAuthMiddleware(MiddlewareMixin):
+    def process_response(self, request, response):
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["Expires"] = "0"
+        return response

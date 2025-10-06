@@ -12,6 +12,7 @@ from ..lib import helpers
 from dotenv import dotenv_values
 from django.db import connections
 from BUDjangoProxyApp.services.OracleDB import OracleDB
+import functools
 
 env_values = dotenv_values(".env")
 
@@ -23,6 +24,8 @@ class DynamicAppManager:
     instance_view_registry = {}
     instance_url_registry = {}
     instance_db_registry = {}
+    instance_options = {}
+    instance_resources = {}
 
 
     # To Load instances
@@ -113,11 +116,16 @@ class DynamicAppManager:
 
         class_config = OracleDB()
         if resources_mapping['instance_mappings'] is not None:
-            for db in resources_mapping['instance_mappings']:
-                found_db_resource = resources_mapping['resources'][int(db['resource'])]
-                found_config = helpers.resource_fix(found_db_resource['config'])
-                ready_config = helpers.prepare_new_resource_db(found_db_resource['resource_type'], found_config)
-                class_config.config_database(db['name'], ready_config)
+            try:
+                for db in resources_mapping['instance_mappings']:
+                    found_db_resource = resources_mapping['resources'][int(db['resource'])]
+                    if found_db_resource['resource_type'] != 'secret' and found_db_resource['resource_type'] != 'value':
+                        found_config = helpers.db_resource_fix(found_db_resource['config'])
+                        ready_config = helpers.prepare_new_resource_db(found_db_resource['resource_type'], found_config)
+                        class_config.config_database(db['name'], ready_config)
+            except Exception as e:
+                logger.error(e)
+
 
         cls.register_db(api_instance.id, class_config)
 
@@ -128,11 +136,10 @@ class DynamicAppManager:
                 cls.write_file(os.path.join(app_path, file['name']), file['content'])
 
         views_code = helpers.prepare_new_views_file(api_instance.id,
+                                                    api_version.version_models,
                                                     api_version.version_views,
                                                     api_version.version_urls,
-                                                    files=api_version.version_files,
-                                                    resources=None,
-                                                    options=api_instance.options)
+                                                    files=api_version.version_files)
         urls_code = helpers.prepare_new_url_file(api_version.version_urls)
 
         # Validate codes
@@ -160,7 +167,14 @@ class DynamicAppManager:
         if models_code:
             cls.register_models(api_instance.id, models_code, resources_mapping)
 
-        cls.register_views(api_instance.id, views_code)
+
+
+        cls.register_views(api_instance.id, views_code,
+                           # args={'ali':'test'},
+                           resources= helpers.prepare_instance_resources(resources_mapping),
+                           options=api_instance.options
+                           )
+
         cls.register_urls(api_instance.id, urls_code)
 
     @classmethod
@@ -217,7 +231,7 @@ class Instance{instance_id}Config(AppConfig):
                         if api_mapping:
                             if int(api_mapping['resource']) in resources_mapping['resources']:
                                 found_resource = resources_mapping['resources'][int(api_mapping['resource'])]
-                                found_config = helpers.resource_fix(found_resource['config'])
+                                found_config = helpers.db_resource_fix(found_resource['config'])
                                 if api_mapping['name'] != 'default':
                                     db_config = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
                                     db_alias = f"{api_mapping['name']}_{instance_id}"
@@ -232,7 +246,6 @@ class Instance{instance_id}Config(AppConfig):
 
                     cls.instance_model_registry[instance_id][obj_name] = obj
                     logger.info(f"Registered models for instance {instance_id}")
-                    # print(connections.databases)
 
         except Exception as e:
             raise Exception(f"Failed to register models for instance {instance_id}: {e}")
@@ -240,7 +253,7 @@ class Instance{instance_id}Config(AppConfig):
     ### VIEW MANAGEMENT ###
 
     @classmethod
-    def register_views(cls, instance_id, views_code):
+    def register_views(cls, instance_id, views_code, resources, options):
         """
         Dynamically register views scoped to a specific instance.
         """
@@ -249,11 +262,23 @@ class Instance{instance_id}Config(AppConfig):
         views_namespace = {"__name__": f"BUDjangoProxyApp.dynamic_views_{instance_id}"}
 
         try:
-
             exec(views_code, views_namespace)
             for obj_name, obj in views_namespace.items():
                 if callable(obj) and isinstance(obj, types.FunctionType):
-                    cls.instance_view_registry[instance_id][obj_name] = obj
+                    def make_wrapper(func, _resources=resources, _options=options):
+                        @functools.wraps(func)
+                        def wrapper(request, *view_args, **view_kwargs):
+                            # Make your external args/resources/options available to the view
+                            view_kwargs['args'] = request.data
+                            view_kwargs['resources'] = _resources
+                            view_kwargs['options'] = _options
+                            return func(request, *view_args, **view_kwargs)
+
+                        return wrapper
+
+                    wrapped = make_wrapper(obj)
+                    cls.instance_view_registry[instance_id][obj_name] = wrapped
+
                     logger.info(f"View {obj_name} registered for instance {instance_id}")
         except Exception as e:
             logger.error(f"Error registering views for instance {instance_id}: {e}")
