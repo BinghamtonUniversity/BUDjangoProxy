@@ -71,6 +71,7 @@ urlpatterns = [
     #Schedulers Operations
     # GET, POST Schedulers
     path('schedulers', view=schedulers.get_create_scheduler, name='get_create_scheduler'),
+
     # GET, PUT, DELETE Schedulers by ID
     path('schedulers/<int:id>', view=schedulers.get_manage_scheduler, name='get_manage_scheduler'),
 

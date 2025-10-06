@@ -269,7 +269,7 @@ class Instance{instance_id}Config(AppConfig):
                         @functools.wraps(func)
                         def wrapper(request, *view_args, **view_kwargs):
                             # Make your external args/resources/options available to the view
-                            view_kwargs['args'] = request.data
+                            view_kwargs['args'] = dict(view_kwargs)
                             view_kwargs['resources'] = _resources
                             view_kwargs['options'] = _options
                             return func(request, *view_args, **view_kwargs)
