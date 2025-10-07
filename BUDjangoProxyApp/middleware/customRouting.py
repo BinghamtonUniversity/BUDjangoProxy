@@ -103,6 +103,8 @@ class DynamicRoutingMiddleware:
             # Check if the user can use the request method
             if next((e for e in request_user_routes if e['verb'] == "ALL" and (e['route'] =="*")), None):
                 return api_user
+            elif next((e for e in request_user_routes if e['verb'] == request.method and (e['route'] =="*")), None):
+                return api_user
             elif next((e for e in request_user_routes if e['verb'] == "ALL" and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
                 return api_user
             elif next((e for e in request_user_routes if e['verb'] == request.method and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
