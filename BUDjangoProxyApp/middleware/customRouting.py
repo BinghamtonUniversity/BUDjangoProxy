@@ -137,7 +137,7 @@ class NormalizeRequestDataMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
-    def __call__(self, request: HttpRequest):
+    def __call__(self, request: HttpRequest, *args, **kwargs):
         # Start with GET and POST data
         # Initialize an empty dictionary for all request data
         all_data = {}
@@ -162,7 +162,6 @@ class NormalizeRequestDataMiddleware:
                     all_data.update(json_data)
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     pass  # Fallback to existing data
-
         request.data = all_data
 
         return self.get_response(request)

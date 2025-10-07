@@ -63,7 +63,8 @@ class CustomPathResolver:
         view_func = resolver_match.func
         args = resolver_match.args
         kwargs = resolver_match.kwargs
-        print(f"View function Name: {view_func.__name__}, args: {args}, kwargs: {kwargs}")
+        request.data.update(dict(kwargs))
+        # print(f"View function Name: {view_func.__name__}, args: {args}, kwargs: {kwargs}")
 
 
         # Call the view function through the resolver
