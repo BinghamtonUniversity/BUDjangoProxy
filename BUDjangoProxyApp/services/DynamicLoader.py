@@ -114,8 +114,8 @@ class DynamicAppManager:
         if len(api_version.version_models)>0:
             models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
 
-        class_config = OracleDB()
         if resources_mapping['instance_mappings'] is not None:
+            class_config = OracleDB()
             try:
                 for db in resources_mapping['instance_mappings']:
                     found_db_resource = resources_mapping['resources'][int(db['resource'])]
@@ -123,11 +123,11 @@ class DynamicAppManager:
                         found_config = helpers.db_resource_fix(found_db_resource['config'])
                         ready_config = helpers.prepare_new_resource_db(found_db_resource['resource_type'], found_config)
                         class_config.config_database(db['name'], ready_config)
+
+                cls.register_db(api_instance.id, class_config)
             except Exception as e:
                 logger.error(e)
 
-
-        cls.register_db(api_instance.id, class_config)
 
         # Create the helper files
         for file in api_version.version_files:
@@ -140,20 +140,22 @@ oracledb = DataProxyManager.get_db({api_instance.id})
 
                 cls.write_file(os.path.join(app_path, file['name']), prepend_text)
 
-        views_code = helpers.prepare_new_views_file(api_instance.id,
-                                                    api_version.version_models,
-                                                    api_version.version_views,
-                                                    api_version.version_urls,
-                                                    files=api_version.version_files)
-        urls_code = helpers.prepare_new_url_file(api_version.version_urls)
+        if api_version.version_views != "" and api_version.version_views is not None:
+            views_code = helpers.prepare_new_views_file(api_instance.id,
+                                                        api_version.version_models,
+                                                        api_version.version_views,
+                                                        api_version.version_urls,
+                                                        files=api_version.version_files)
+            helpers.validate_code(views_code)
+
+        if api_version.version_urls != "" and api_version.version_urls is not None:
+            urls_code = helpers.prepare_new_url_file(api_version.version_urls)
+            helpers.validate_code(urls_code)
 
         # Validate codes
         if models_code:
             helpers.validate_code(models_code)
 
-        helpers.validate_code(views_code)
-        helpers.validate_code(urls_code)
-        # helpers.validate_code()
         # except json.JSONDecodeError as e:
         #     logger.error(f"Failed to decode code_content for APIInstance {api_instance.id}: {e}")
         #     return
@@ -164,23 +166,21 @@ oracledb = DataProxyManager.get_db({api_instance.id})
             cls.write_file(os.path.join(app_path, "models.py"), models_code)
         cls.write_file(os.path.join(app_path, "views.py"), views_code)
         cls.write_file(os.path.join(app_path, "urls.py"), urls_code)
-
-
         cls.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
 
-        # Register the models
+        # Register the models/views/urls
         if models_code:
             cls.register_models(api_instance.id, models_code, resources_mapping)
 
 
-
-        cls.register_views(api_instance.id, views_code,
-                           # args={'ali':'test'},
-                           resources= helpers.prepare_instance_resources(resources_mapping),
-                           options=api_instance.options
-                           )
-
-        cls.register_urls(api_instance.id, urls_code)
+        if views_code:
+            cls.register_views(api_instance.id, views_code,
+                               # args={'ali':'test'},
+                               resources= helpers.prepare_instance_resources(resources_mapping),
+                               options=api_instance.options
+                               )
+        if urls_code:
+            cls.register_urls(api_instance.id, urls_code)
 
     @classmethod
     def generate_apps_py_content(cls, instance_id):
