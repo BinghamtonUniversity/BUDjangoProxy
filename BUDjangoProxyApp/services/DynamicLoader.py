@@ -133,7 +133,12 @@ class DynamicAppManager:
         for file in api_version.version_files:
             if file['name']!="" and file['name'] !='' and file['name'] != '__init__.py' and file['name'] != 'models.py' and file['name'] != 'views.py' and file[
                 'name'] != 'urls.py':
-                cls.write_file(os.path.join(app_path, file['name']), file['content'])
+                prepend_text = f"""
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager\n
+oracledb = DataProxyManager.get_db({api_instance.id})
+{file['content']}"""
+
+                cls.write_file(os.path.join(app_path, file['name']), prepend_text)
 
         views_code = helpers.prepare_new_views_file(api_instance.id,
                                                     api_version.version_models,

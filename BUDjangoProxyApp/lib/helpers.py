@@ -150,7 +150,7 @@ def prepare_new_views_file(instance_id, models, views, urls,files=None):
     for view in views:
         request_param = ""
         request_params = next((url for url in urls if url['view_name'] == view['name']), None)
-        if 'required' in request_params and len(request_params['required'])>0:
+        if request_params and 'required' in request_params and len(request_params['required'])>0:
             required_params = [param['name'] for param in request_params['required']]
             request_param = ",".join(required_params)
 

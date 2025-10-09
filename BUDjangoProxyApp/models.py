@@ -107,6 +107,7 @@ class APIInstance(models.Model):
 
     class Meta:
         db_table = "api_instances"
+        unique_together = (('route', 'environment'),)
 
     def __str__(self):
         return f"{self.name} ({self.environment.type})"
@@ -274,6 +275,9 @@ class ActivityLog(models.Model):
     old = models.JSONField(default=None, encoder=DjangoJSONEncoder)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'activity_log'
 
 
 
