@@ -1,7 +1,6 @@
 import logging
 import json
-from unittest import case
-
+import os
 from django.forms import model_to_dict
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values, DYNAMIC_APPS_DIR
@@ -13,6 +12,7 @@ def load_into_dict(file_name):
     data = json.load(f)
     return data
 
+
 def save_result_file(out_file, data):
     try:
         with open(out_file, 'w') as file:
@@ -20,6 +20,14 @@ def save_result_file(out_file, data):
             file.close()
     except Exception as e:
         raise e
+
+
+def write_file(path, content):
+    """
+    Utility function to write content to a file.
+    """
+    with open(path, "w") as f:
+        f.write(content)
 
 def validate_code(code, code_type="python", context_lines=2):
     """
@@ -118,6 +126,9 @@ def prepare_new_models_file(models):
     appended_models = ""
 
     for model in models:
+        if 'content' not in model or model['content'] is None or model['content'] == '':
+            continue
+
         # Start the model class definition
         appended_models += f"""class {model['name']}({model['inheritance']}):\n"""
         # Add model content with proper indentation
@@ -145,9 +156,13 @@ def prepare_new_views_file(instance_id, models, views, urls,files=None):
     appended_views = ""
     imported_models = ""
     for model in models:
+        if 'content' not in model or model['content'] is None or model['content'] == '':
+            continue
         if 'name' in model and model['name'] is not None and model['name'] != '':
             imported_models += f"""{model['name']} = DataProxyManager.get_model('{model['name']}')\n"""
     for view in views:
+        if 'content' not in view or view['content'] is None or view['content'] == '':
+            continue
         request_param = ""
         request_params = next((url for url in urls if url['view_name'] == view['name']), None)
         if request_params and 'required' in request_params and len(request_params['required'])>0:
@@ -178,7 +193,6 @@ oracledb = DataProxyManager.get_db({instance_id})
 def prepare_new_url_file(urls):
     url_patterns = []
 
-
     for url in urls:
         request_param = ""
         if url and 'required' in url:
@@ -195,6 +209,23 @@ from .views import *
 urlpatterns = [{",\n".join(url_patterns)}]
     """
 
+def prepare_new_additional_files(api_version, api_instance, app_path):
+    existing_files = [file['name'] for file in api_version.version_files] #to keep the current list of files
+    cleanup_dynamic_app_directory(app_path, existing_files)
+    # Create the helper files
+    for file in api_version.version_files:
+        if 'content' not in file or file['content'] is None or file['content'] == '' or len(file['name'].split('.')) != 2 or file['name'].split('.')[1]!='py':
+            continue
+
+        if file['name'] != "" and file['name'] != '' and file['name'] != '__init__.py' and file[
+            'name'] != 'models.py' and file['name'] != 'views.py' and file[
+            'name'] != 'urls.py':
+            prepend_text = f"""
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager\n
+oracledb = DataProxyManager.get_db({api_instance.id})
+{file['content']}"""
+
+            write_file(os.path.join(app_path, file['name']), prepend_text)
 
 
 def instance_to_dict(instance, with_relations=None):
@@ -232,3 +263,25 @@ def prepare_instance_resources(resources):
                 response_data[res['name']] = None
 
     return response_data
+
+# To cleanup all the files that are no longer related to the api_instance
+def cleanup_dynamic_app_directory(full_path, allowed_files):
+    # Deleting the files/folders for that instance under dynamic_apps directory
+    allowed_files += ['__init__.py','apps.py','models.py', 'urls.py','views.py', 'api_version.json']
+
+    if not os.path.exists(full_path):
+        print(f"Directory {full_path} does not exist.")
+        return
+
+    for filename in os.listdir(full_path):
+        file_path = os.path.join(full_path, filename)
+
+        # Only target files, not directories
+        if os.path.isfile(file_path) and filename not in allowed_files:
+            try:
+                os.remove(file_path)
+                print(f"Removed: {filename}")
+            except Exception as e:
+                print(f"Error removing {filename}: {e}")
+
+    return True

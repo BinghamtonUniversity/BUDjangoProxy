@@ -74,13 +74,7 @@ class DynamicAppManager:
     def get_db(cls, instance_id):
         return cls.instance_db_registry.get(instance_id)
 
-    @staticmethod
-    def write_file(path, content):
-        """
-        Utility function to write content to a file.
-        """
-        with open(path, "w") as f:
-            f.write(content)
+
 
     ### INSTANCE MANAGEMENT ###
     @classmethod
@@ -128,17 +122,8 @@ class DynamicAppManager:
             except Exception as e:
                 logger.error(e)
 
-
-        # Create the helper files
-        for file in api_version.version_files:
-            if file['name']!="" and file['name'] !='' and file['name'] != '__init__.py' and file['name'] != 'models.py' and file['name'] != 'views.py' and file[
-                'name'] != 'urls.py':
-                prepend_text = f"""
-from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager\n
-oracledb = DataProxyManager.get_db({api_instance.id})
-{file['content']}"""
-
-                cls.write_file(os.path.join(app_path, file['name']), prepend_text)
+        # Create new additional files
+        helpers.prepare_new_additional_files(api_version, api_instance, app_path)
 
         if api_version.version_views != "" and api_version.version_views is not None:
             views_code = helpers.prepare_new_views_file(api_instance.id,
@@ -161,12 +146,13 @@ oracledb = DataProxyManager.get_db({api_instance.id})
         #     return
 
         # Write apps to the files first
-        cls.write_file(os.path.join(app_path, "__init__.py"), "")  # Ensure it's a Python package
+        helpers.write_file(os.path.join(app_path, "__init__.py"), "")  # Ensure it's a Python package
         if models_code:
-            cls.write_file(os.path.join(app_path, "models.py"), models_code)
-        cls.write_file(os.path.join(app_path, "views.py"), views_code)
-        cls.write_file(os.path.join(app_path, "urls.py"), urls_code)
-        cls.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
+            helpers.write_file(os.path.join(app_path, "models.py"), models_code)
+
+        helpers.write_file(os.path.join(app_path, "views.py"), views_code)
+        helpers.write_file(os.path.join(app_path, "urls.py"), urls_code)
+        helpers.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
 
         # Register the models/views/urls
         if models_code:
@@ -175,7 +161,6 @@ oracledb = DataProxyManager.get_db({api_instance.id})
 
         if views_code:
             cls.register_views(api_instance.id, views_code,
-                               # args={'ali':'test'},
                                resources= helpers.prepare_instance_resources(resources_mapping),
                                options=api_instance.options
                                )
