@@ -51,8 +51,8 @@ class Environment(models.Model):
 class API(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=False)
-    description = models.TextField()
-    tags = models.CharField(max_length=255, blank=True)
+    description = models.CharField(max_length=255, blank=True, null=True)
+    tags = models.CharField(max_length=255, blank=True, null=True)
     api_type = models.CharField(max_length=20, default='php', blank=False, null=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE,db_column='user_id')
     created_at = models.DateTimeField(auto_now_add=True)
