@@ -164,3 +164,11 @@ def delete_api_developer(request,api_id,user_id):
         return JsonResponse({'message': "Success"}, status=200)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+def get_all_api_versions(request):
+    if request.method not in ['GET']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
+    return JsonResponse(list(APIVersion.objects.all().values('id','description','summary','stable','created_at')), safe=False)

@@ -34,6 +34,8 @@ urlpatterns = [
     path('apis/<int:id>/code', view=apis.manage_api_version_code, name='manage_api_version'),
     # GET API Version -> Get all the version of the API
     path('apis/<int:id>/versions', view=apis.get_api_versions, name='get_api_versions'),
+    # GET ALL API VERSIONS
+    path('api_versions', view=apis.get_all_api_versions, name='get_all_api_versions'),
 
     path('apis/<int:api_id>/versions/<int:version_id>', view=apis.get_api_version_code, name='get_api_version_code'),
     # GET API Version -> get the latest API version

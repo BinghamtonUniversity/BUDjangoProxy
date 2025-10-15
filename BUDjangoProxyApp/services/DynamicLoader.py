@@ -43,7 +43,7 @@ class DynamicAppManager:
         Reload all API instances dynamically.
         """
         from BUDjangoProxyApp.models import APIInstance
-        instances = APIInstance.objects.select_related('api', 'api_version_id', 'environment').all()
+        instances = APIInstance.objects.select_related('api', 'api_version', 'environment').all()
 
         for instance in instances:
             try:
@@ -83,7 +83,8 @@ class DynamicAppManager:
         Create or update the dynamic app for an API instance.
         """
         app_path = cls.get_app_path(api_instance.id)
-        api_version = api_instance.api_version
+        api_version = api_instance.version_id
+
 
 
         models_code = None
