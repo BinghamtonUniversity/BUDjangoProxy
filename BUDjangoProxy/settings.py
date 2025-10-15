@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 env_values = dotenv_values(".env")
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -148,6 +149,18 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env_values['MAIL_HOST']
+EMAIL_PORT = 587
+EMAIL_HOST_USER = env_values['MAIL_SMTP_USERNAME']
+EMAIL_HOST_PASSWORD = env_values['MAIL_SMTP_PASSWORD']
+DEFAULT_FROM_EMAIL = env_values['MAIL_FROM_ADDRESS']
+DEFAULT_FROM_NAME = env_values['MAIL_FROM_NAME']
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+
+# DEFAULT_FROM_NAME = env_values['DEFAULT_FROM_NAME']  if 'DEFAULT_FROM_NAME' in env_values else None
 
 LOGGING = {
     'version': 1,
