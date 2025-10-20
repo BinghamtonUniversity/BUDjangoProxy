@@ -144,7 +144,7 @@ def prepare_new_models_file(models):
         # Add class methods if they exist
         if 'class_methods' in model:
             for method in model['class_methods']:
-                appended_models += f"""    def {method['name']}({method['params']}):\n"""
+                appended_models += f"""    def {method['name']}(self, {",".join(method['params'])}):\n"""
                 appended_models += f"""        {method['content'].replace('\n', '\n        ')}\n\n"""
 
         appended_models += "\n"  # Add a newline between models
@@ -264,7 +264,7 @@ def prepare_instance_resources(resources):
 
     return response_data
 
-# To cleanup all the files that are no longer related to the api_instance
+# To clean up all the files that are no longer related to the api_instance
 def cleanup_dynamic_app_directory(full_path, allowed_files):
     # Deleting the files/folders for that instance under dynamic_apps directory
     allowed_files += ['__init__.py','apps.py','models.py', 'urls.py','views.py', 'api_version.json']
