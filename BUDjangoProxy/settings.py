@@ -35,15 +35,8 @@ ALLOWED_HOSTS = env_values["ALLOWED_HOSTS"].split(",")
 CSRF_TRUSTED_ORIGINS= env_values["CSRF_TRUSTED_ORIGINS"].split(",")
 CORS_ORIGIN_ALLOW_ALL = env_values["CORS_ORIGIN_ALLOW_ALL"]=="True" if "CORS_ORIGIN_ALLOW_ALL" in env_values else False
 
-# CORS_ALLOW_CREDENTIALS = True
-
 # Application definition
 INSTALLED_APPS = [
-    # 'django.contrib.admin',
-    # 'django.contrib.auth',
-    # 'django.contrib.contenttypes',
-    # 'django.contrib.sessions',
-    # 'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
     'BUDjangoProxyApp',

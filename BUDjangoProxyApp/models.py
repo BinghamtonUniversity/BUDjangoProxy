@@ -101,7 +101,7 @@ class APIInstance(models.Model):
     name = models.CharField(max_length=100, null=True)
     route = models.CharField(max_length=255, db_column='slug')
     api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance')
-    api_version = models.ForeignKey(APIVersion,verbose_name='api_version', default=None, null=True, db_column='api_version_id', blank=True, on_delete=models.CASCADE, related_name='version_instance')
+    api_version_id = models.ForeignKey(APIVersion, to_field='id', verbose_name='api_version', default=None, null=True, db_column='api_version_id', blank=True, on_delete=models.CASCADE, related_name='version_instance')
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True, related_name='environment_instance')
     resources = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False)
     options = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False)
@@ -119,30 +119,30 @@ class APIInstance(models.Model):
         return f"{self.name} ({self.environment.type})"
 
     @property
-    def version_id(self):
-        if self.api_version:
-            return self.api_version
+    def api_version(self):
+        if self.api_version_id:
+            return self.api_version_id
 
         return self.get_instance_version()
 
 
     def get_instance_version(self):
-        if self.api_version is None:
+        if self.api_version_id is None:
             try:
 
                 return APIVersion.objects.filter(api=self.api).latest('created_at')
             except APIVersion.DoesNotExist:
                 return None
-        elif self.api_version == 0:
+        elif self.api_version_id == 0:
             try:
                 return APIVersion.objects.filter(api=self.api, stable=True).latest('updated_at')
             except APIVersion.DoesNotExist:
                 return None
         else:
-            return self.api_version
+            return self.api_version_id
 
     def get_instance_version_api(self):
-        return self.api_version.api
+        return self.api_version_id.api
 
 
 class APIDeveloper(models.Model):

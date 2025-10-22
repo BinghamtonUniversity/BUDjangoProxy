@@ -18,7 +18,14 @@ def get_create_api_instances(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(APIInstance.objects.all().values()), safe=False)
+        return JsonResponse(list(APIInstance.objects.all().values("id", "name","route",
+                                                                  "api_id","api_version_id",
+                                                                  "environment_id","resources",
+                                                                  "options","route_user_map",
+                                                                  "public", "errors",
+                                                                  "created_at", "updated_at"
+        )
+                                 ), safe=False)
     elif request.method == 'POST':
         try:
             api_instance = APIInstance(**request.data)
