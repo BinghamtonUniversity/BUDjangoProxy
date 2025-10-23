@@ -146,7 +146,7 @@ def prepare_new_models_file(models):
             for method in model['class_methods']:
                 append_str = ""
                 if len(method['params'])>0:
-                    append_str += """, {",".join(method['params'])}):\n"""
+                    append_str += f""", {",".join(method['params'])}"""
 
                 appended_models += f"""    def {method['name']}(self{append_str}):\n"""
                 appended_models += f"""        {method['content'].replace('\n', '\n        ')}\n\n"""
