@@ -83,7 +83,7 @@ class DynamicAppManager:
         Create or update the dynamic app for an API instance.
         """
         app_path = cls.get_app_path(api_instance.id)
-        api_version = api_instance.version_id
+        api_version = api_instance.api_version
 
 
 
