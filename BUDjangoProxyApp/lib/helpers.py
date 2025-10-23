@@ -144,7 +144,11 @@ def prepare_new_models_file(models):
         # Add class methods if they exist
         if 'class_methods' in model:
             for method in model['class_methods']:
-                appended_models += f"""    def {method['name']}(self, {",".join(method['params'])}):\n"""
+                append_str = ""
+                if len(method['params'])>0:
+                    append_str += """, {",".join(method['params'])}):\n"""
+
+                appended_models += f"""    def {method['name']}(self{append_str}):\n"""
                 appended_models += f"""        {method['content'].replace('\n', '\n        ')}\n\n"""
 
         appended_models += "\n"  # Add a newline between models
