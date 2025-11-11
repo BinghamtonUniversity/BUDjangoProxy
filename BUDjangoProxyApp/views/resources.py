@@ -16,10 +16,14 @@ def get_create_resources(request):
         return JsonResponse(list(Resource.objects.all().values()), safe=False)
     elif request.method == 'POST':
         try:
-            api_instance = Resource(**request.data)
-            api_instance.config['pass'] = LaravelEncryptor().encrypt(api_instance.config['pass'])
-            api_instance.save()
-            return JsonResponse(model_to_dict(api_instance), safe=False)
+            resource = Resource(**request.data)
+            if resource.resource_type == 'secret':
+                resource.config['value'] = LaravelEncryptor().encrypt(resource.config['value'])
+            elif resource.resource_type == 'oracle' or resource.resource_type == 'mysql' or resource.resource_type == 'sqlsrv':
+                resource.config['pass'] = LaravelEncryptor().encrypt(resource.config['pass'])
+
+            resource.save()
+            return JsonResponse(model_to_dict(resource), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
@@ -35,7 +39,11 @@ def get_manage_resource(request, id):
     elif request.method == 'PUT':
         try:
             request_data = request.data
-            request_data['config']['pass'] = LaravelEncryptor().encrypt(request_data['config']['pass'])
+            if request_data['resource_type'] == 'secret':
+                request_data['config']['value'] = LaravelEncryptor().encrypt(request_data['config']['value'])
+            elif request_data['resource_type'] == 'oracle' or request_data['resource_type'] == 'mysql' or request_data['resource_type'] == 'sqlsrv':
+                request_data['config']['pass'] = LaravelEncryptor().encrypt(request_data['config']['pass'])
+
             Resource.objects.filter(id=id).update(**request_data)
             return JsonResponse(model_to_dict(Resource.objects.get(id=id)), safe=False)
         except Exception as e:
