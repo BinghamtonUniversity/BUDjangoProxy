@@ -30,7 +30,7 @@ def get_create_apis(request):
             api_version  = APIVersion(api= api,
                                       version_files=[],
                                       resources=[],
-                                      options = [],
+                                      options = None,
                                       version_models = [],
                                       version_views = [],
                                       version_urls=[],

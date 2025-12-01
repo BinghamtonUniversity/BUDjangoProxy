@@ -25,12 +25,24 @@ class CustomPathResolver:
 
     def resolve(self, request, api_instance, refresh_required=False):
         instance_id = api_instance.id  # Assuming APIInstance has an 'id' field
-        module_path = f"BUDjangoProxyApp.dynamic_apps.{instance_id}.urls"
+        base_prefix = f"BUDjangoProxyApp.dynamic_apps.{instance_id}"
+        module_path = f"{base_prefix}.urls"
+
+        def clear_cached_modules():
+            for m in list(sys.modules.keys()):
+                if m.startswith(base_prefix):
+                    del sys.modules[m]
 
         # Check if the module is already loaded and reload it to pick up changes
-        if refresh_required and module_path in sys.modules:
-            urls_module = importlib.reload(sys.modules[module_path])
-        else:
+        if refresh_required:
+            clear_cached_modules()
+
+        try:
+            # Try loading fresh module (may be cached if no refresh)
+            urls_module = importlib.import_module(module_path)
+        except Exception:
+            # IF IMPORT FAILS → clear cache and re-import
+            clear_cached_modules()
             urls_module = importlib.import_module(module_path)
 
         # instance_version = api_instance.get_instance_version()
