@@ -57,8 +57,8 @@ class API(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE,db_column='user_id')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_created_by',to_field='id')
-    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_updated_by', to_field='id')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_created_by',to_field='id', db_column='created_by')
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_updated_by', to_field='id', db_column='updated_by')
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
@@ -77,13 +77,13 @@ class APIVersion(models.Model):
     version_models = models.JSONField()
     version_views = models.JSONField(db_column='functions', default=list, null=True, blank=True)
     version_urls = models.JSONField(db_column='routes', default=list, null=True, blank=True)
-    options = models.JSONField(db_column='options', default=list ,null=True, blank=True)
+    options = models.JSONField(db_column='options' ,null=True, blank=True)
     version_files = models.JSONField(db_column='files', null=True, blank=True)
     resources = models.JSONField(default=dict, null=True, blank=True)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by', db_column='user_id')
-    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_updated_by')
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_updated_by', db_column='updated_by')
 
     def __str__(self):
         return f"{self.id} - {self.api.name}"

@@ -4,11 +4,11 @@ from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNot
 from django.views.decorators.csrf import csrf_exempt
 from BUDjangoProxyApp.lib.helpers import instance_to_dict
 from ..models import *
-# from ..lib.policies_wrapper import policy
-# from ..policies.schedulers import *
+from ..lib.policies_wrapper import policy
+from ..policies.schedulers import *
 
 # @csrf_exempt
-# @policy(can_get_create_api_instance)
+@policy(can_get_create_scheduler)
 def get_create_scheduler(request):
     if request.method not in ['GET', 'POST']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
@@ -24,8 +24,7 @@ def get_create_scheduler(request):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-# @csrf_exempt
-# @policy(can_manage_api_instance,object_arg_name='id')
+@policy(can_manage_scheduler,object_arg_name='id')
 def get_manage_scheduler(request, id):
     if request.method not in ['GET', 'PUT','DELETE']:
         return JsonResponse({"error":"Method not allowed"}, status=405)

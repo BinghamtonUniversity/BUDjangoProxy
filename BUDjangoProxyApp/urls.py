@@ -69,6 +69,7 @@ urlpatterns = [
     # GET, PUT, DELETE Users ID
     path('users/<int:id>', view=users.get_manage_user, name='get_manage_user'),
     path('users/<int:user_id>/apis', view=users.get_user_apis, name='get_user_apis'),
+    # path('users/unique_id/<str:unique_id>', view=users.get_users_by_unique_id, name='get_users_by_unique_id'),
 
     #Schedulers Operations
     # GET, POST Schedulers
@@ -79,5 +80,5 @@ urlpatterns = [
 
     #Activity Logs Operations
     # GET Activity Logs
-    path('activity_logs', view=activity_logs.get_create_activity_log, name='get_create_activity_log')
+    path('activity_logs', view=activity_logs.get_activity_log, name='get_activity_log')
 ]

@@ -4,14 +4,12 @@ from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNot
 from django.views.decorators.csrf import csrf_exempt
 from BUDjangoProxyApp.lib.helpers import instance_to_dict
 from ..models import *
-# from ..lib.policies_wrapper import policy
-# from ..policies.schedulers import *
+from ..lib.policies_wrapper import policy
+from ..policies.activity_logs import *
 
-# @csrf_exempt
-# @policy(can_get_create_api_instance)
-def get_create_activity_log(request):
-    if request.method not in ['GET', 'POST']:
+@policy(can_get_activity_logs)
+def get_activity_log(request):
+    if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    if request.method == 'GET':
-        return JsonResponse(list(ActivityLog.objects.all().values()), safe=False)
+    return JsonResponse(list(ActivityLog.objects.all().values()), safe=False)

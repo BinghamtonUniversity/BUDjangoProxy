@@ -45,7 +45,6 @@ def get_manage_user(request, id):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-
 @csrf_exempt
 # @policy(can_manage_user, object_arg_name='id')
 def get_user_apis(request, user_id):
