@@ -48,15 +48,23 @@ def get_manage_api_instance(request, id):
 
         return JsonResponse(response_data,safe=False)
     elif request.method == 'PUT':
-        try:
-            request_data = request.data
-            APIInstance.objects.filter(id=id).update(**request_data)
+        # try:
+        request_data = request.data
+        api_instance = APIInstance.objects.filter(id=id).first()
+        api_instance.name = request_data['name']
+        api_instance.route = request_data['route']
+        api_instance.route_user_map = request_data['route_user_map']
+        api_instance.api_version_id = request_data['api_version_id'] if 'api_version_id' in request_data and request_data['api_version_id'] else None
+        api_instance.resources = request_data['resources']
+        api_instance.options = request_data['options']
+        api_instance.public = request_data['public']
+        api_instance.save()
 
-            response_data = instance_to_dict(APIInstance.objects.get(id=id), ['api', 'environment', 'api_version'])
+        response_data = instance_to_dict(APIInstance.objects.get(id=id), ['api', 'environment', 'api_version'])
 
-            return JsonResponse(response_data, safe=False)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse(response_data, safe=False)
+        # except Exception as e:
+        #     return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         try:
             APIInstance.objects.filter(id=id).delete()

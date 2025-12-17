@@ -1,6 +1,10 @@
 import json
+from os import environ
+
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.forms.models import model_to_dict
+from BUDjangoProxyApp.middleware.request_context import get_request_user_info, get_request_context
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values
 from .lib import helpers
@@ -54,11 +58,11 @@ class API(models.Model):
     description = models.CharField(max_length=255, blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
     api_type = models.CharField(max_length=20, default='php', blank=False, null=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE,db_column='user_id')
+    user = models.ForeignKey(User, on_delete=models.CASCADE,db_column='user_id', db_constraint=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_created_by',to_field='id', db_column='created_by')
-    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_updated_by', to_field='id', db_column='updated_by')
+    created_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='api_created_by',to_field='id', db_column='created_by',db_constraint=True)
+    updated_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='api_updated_by', to_field='id', db_column='updated_by',db_constraint=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
@@ -70,7 +74,7 @@ class API(models.Model):
 
 class APIVersion(models.Model):
     id = models.AutoField(primary_key=True)
-    api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_versions',parent_link=True, db_index=True)
+    api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_versions',parent_link=True, db_index=True,db_constraint=True)
     summary = models.CharField(max_length=255, null=True, blank=True)
     description = models.CharField(max_length=255, null=True, blank=True)
     stable = models.BooleanField(default=False, db_index=True)
@@ -82,8 +86,8 @@ class APIVersion(models.Model):
     resources = models.JSONField(default=dict, null=True, blank=True)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by', db_column='user_id')
-    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_updated_by', db_column='updated_by')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by', db_column='user_id',db_constraint=True)
+    updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_updated_by', db_column='updated_by',db_constraint=True)
 
     def __str__(self):
         return f"{self.id} - {self.api.name}"
@@ -100,9 +104,9 @@ class APIInstance(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, null=True)
     route = models.CharField(max_length=255, db_column='slug')
-    api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance')
-    api_version_id = models.ForeignKey(APIVersion, to_field='id', verbose_name='api_version', default=None, null=True, db_column='api_version_id', blank=True, on_delete=models.CASCADE, related_name='version_instance')
-    environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True, related_name='environment_instance')
+    api = models.ForeignKey(API, on_delete=models.CASCADE, related_name='api_instance',db_constraint=True)
+    api_version_id = models.ForeignKey(APIVersion, to_field='id', verbose_name='api_version', default=None, null=True, db_column='api_version_id', blank=True, on_delete=models.CASCADE, related_name='version_instance',db_constraint=True)
+    environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True, related_name='environment_instance',db_constraint=True)
     resources = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False, default=None)
     options = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=False, default=None)
     route_user_map = models.JSONField(default=list, encoder=json.JSONEncoder, decoder=json.JSONDecoder, db_column='route_user_map', null=True)
@@ -147,19 +151,20 @@ class APIInstance(models.Model):
 
 class APIDeveloper(models.Model):
     id = models.AutoField(primary_key=True)
-    api_developer = models.ForeignKey(User, db_column='user_id', to_field='id', on_delete=models.CASCADE)
-    api = models.ForeignKey(API, db_column='api_id', to_field='id', on_delete=models.CASCADE)
+    api_developer = models.ForeignKey(User, db_column='user_id', to_field='id', on_delete=models.CASCADE,db_constraint=True)
+    api = models.ForeignKey(API, db_column='api_id', to_field='id', on_delete=models.CASCADE,db_constraint=True)
 
     class Meta:
         unique_together = (('api_developer', 'api'))
         db_table = 'api_developers'
 
-class Resource(models.Model):
-    ENVIRONMENT_TYPE = (
+ENVIRONMENT_TYPE = (
         ('dev', 'Development'),
         ('test', 'Testing'),
         ('prod', 'Production'),
     )
+
+class Resource(models.Model):
     RESOURCE_TYPE_CHOICES = [
         ('oracle', 'Oracle'),
         ('mysql', 'MySQL'),
@@ -193,6 +198,8 @@ class Resource(models.Model):
     class Meta:
         db_table = 'resources'
 
+    # def
+
 
 class APIUser(models.Model):
     id = models.AutoField(primary_key=True)
@@ -201,7 +208,8 @@ class APIUser(models.Model):
     encrypted_app_secret = models.CharField(max_length=255, db_column='encrypted_app_secret',null=True)
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True, null=False,
                                     related_name='environment_users',
-                                    default=1)
+                                    default=1,
+                                    db_constraint=True)
 
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -243,7 +251,7 @@ class Scheduler(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     cron = models.CharField(max_length=255)
-    api_instance = models.ForeignKey(APIInstance, to_field='id',db_column='api_instance_id', on_delete=models.CASCADE)
+    api_instance = models.ForeignKey(APIInstance, to_field='id',db_column='api_instance_id', on_delete=models.CASCADE,db_constraint=True)
     args = models.JSONField(default=None, encoder=DjangoJSONEncoder)
     verb = models.CharField(default='GET', max_length=255)
     enabled = models.BooleanField(default=True, db_column='enabled')
@@ -267,16 +275,23 @@ ACTIVITY_ACTION_TYPES = [
 ]
 class ActivityLog(models.Model):
     id = models.AutoField(primary_key=True,)
-    event_id = models.IntegerField(db_column='event_id')
+    event_id = models.IntegerField(db_column='event_id', )
     action = models.CharField(
         max_length=10,
         choices=ACTIVITY_ACTION_TYPES,
-        default='dev',
+        default='GET',
         db_column='action',
         db_index=True
     )
     event = models.CharField(max_length=255, db_column='event', null=True,blank=True)
-    user_id = models.ForeignKey(User, to_field='id', db_column='user_id', on_delete=models.CASCADE)
+    type = models.CharField( max_length=10,
+        choices=ENVIRONMENT_TYPE,
+        null=True,
+        blank=True,
+        db_column='type',
+        db_index=True
+    )
+    user_id = models.ForeignKey(User, to_field='id', db_column='user_id', on_delete=models.CASCADE, db_constraint=True)
     comment = models.CharField(max_length=255, db_column='comment', null=True,blank=True)
     new = models.JSONField(default=None, encoder=DjangoJSONEncoder)
     old = models.JSONField(default=None, encoder=DjangoJSONEncoder)
@@ -320,4 +335,97 @@ def validate_code(sender, instance=None, **kwargs):
 
     helpers.validate_code(urls)
 
-    # logger.info(f"Reloaded all instances for API: {version.api.name}")
+
+EXISTING_TYPES = ["Resource","APIInstance","Environment"]
+
+# @receiver(pre_save, sender=Resource)
+def update_activity_logger(sender, instance, **kwargs):
+    if sender == ActivityLog:
+        return
+
+    request = get_request_context()
+    if request.method != "PUT" or request.method != "PATCH":
+        return
+
+    try:
+        old_instance = sender.objects.get(pk=instance.pk)
+    except sender.DoesNotExist:
+        old_instance = []
+
+    environment_type = None
+    if sender.__name__ in EXISTING_TYPES:
+        if sender.__name__ == "APIInstance":
+            environment_type = instance.environment.type
+        elif sender.__name__ == "Environment":
+            environment_type = instance.type
+        elif sender.__name__ == "Resource":
+            environment_type = instance.type
+
+    ActivityLog.objects.create(
+        event_id=instance.id,
+        event=sender.__name__,
+        old=model_to_dict(old_instance) if not isinstance(old_instance, list) else old_instance,
+        new=model_to_dict(instance) if instance else [],
+        user_id = get_request_user_info(),
+        action = request.method,
+        type= environment_type
+    )
+
+def post_activity_logger(sender, instance, **kwargs):
+    if sender == ActivityLog:
+        return
+
+    request = get_request_context()
+    if request.method != "POST":
+        return
+
+    environment_type = None
+    if sender.__name__ in EXISTING_TYPES:
+        if sender.__name__ == "APIInstance":
+            environment_type = instance.environment.type
+        elif sender.__name__ == "Environment":
+            environment_type = instance.type
+        elif sender.__name__ == "Resource":
+            environment_type = instance.type
+
+    ActivityLog.objects.create(
+        event_id=instance.id,
+        event=sender.__name__,
+        old=[],
+        new=model_to_dict(instance),
+        user_id = get_request_user_info(),
+        action = request.method,
+        type=environment_type
+    )
+
+def delete_activity_logger(sender, instance, **kwargs):
+    if sender == ActivityLog:
+        return
+
+    request = get_request_context()
+    if request.method != "DELETE":
+        return
+
+    try:
+        old_instance = sender.objects.get(pk=instance.pk)
+    except sender.DoesNotExist:
+        return
+
+    environment_type = None
+    if sender.__name__ in EXISTING_TYPES:
+        if sender.__name__ == "APIInstance":
+            environment_type = old_instance.environment.type
+        elif sender.__name__ == "Environment":
+            environment_type = old_instance.type
+        elif sender.__name__ == "Resource":
+            environment_type = old_instance.type
+
+    ActivityLog.objects.create(
+        event_id=instance.id,
+        event=sender.__name__,
+        old=model_to_dict(old_instance),
+        new=[],
+        user_id=get_request_user_info(),
+        action=request.method,
+        type=environment_type
+    )

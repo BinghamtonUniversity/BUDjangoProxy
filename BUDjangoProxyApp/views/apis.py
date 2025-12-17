@@ -22,8 +22,8 @@ def get_create_apis(request):
     elif request.method == 'POST':
         try:
             request_data = request.data
-            request_data['created_by_id'] = request.user.id
-            request_data['updated_by_id'] = request.user.id
+            request_data['created_by'] = request.user.id
+            request_data['updated_by'] = request.user.id
             request_data['user_id'] = request.user.id
             api = API(**request_data)
             api.save()
@@ -34,8 +34,8 @@ def get_create_apis(request):
                                       version_models = [],
                                       version_views = [],
                                       version_urls=[],
-                                      created_by_id=request.user.id,
-                                      updated_by_id=request.user.id,
+                                      created_by=request.user.id,
+                                      updated_by=request.user.id,
                                       stable=False)
             api_version.save()
             return JsonResponse(model_to_dict(api), safe=False)
@@ -118,7 +118,7 @@ def manage_api_version_code(request, id):
     try:
         api_version = APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
     except APIVersion.DoesNotExist:
-        api_version = APIVersion(api_id=id, stable=False, created_by_id=1, updated_by_id=1)
+        api_version = APIVersion(api_id=id, stable=False, created_by=1, updated_by=1)
         api_version.stable = False
 
     try:

@@ -15,17 +15,17 @@ def get_create_resources(request):
     if request.method == 'GET':
         return JsonResponse(list(Resource.objects.all().values()), safe=False)
     elif request.method == 'POST':
-        try:
-            resource = Resource(**request.data)
-            if resource.resource_type == 'secret':
-                resource.config['value'] = LaravelEncryptor().encrypt(resource.config['value'])
-            elif resource.resource_type == 'oracle' or resource.resource_type == 'mysql' or resource.resource_type == 'sqlsrv':
-                resource.config['pass'] = LaravelEncryptor().encrypt(resource.config['pass'])
+        # try:
+        resource = Resource(**request.data)
+        if resource.resource_type == 'secret':
+            resource.config['value'] = LaravelEncryptor().encrypt(resource.config['value'])
+        elif resource.resource_type == 'oracle' or resource.resource_type == 'mysql' or resource.resource_type == 'sqlsrv':
+            resource.config['pass'] = LaravelEncryptor().encrypt(resource.config['pass'])
 
-            resource.save()
-            return JsonResponse(model_to_dict(resource), safe=False)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        resource.save()
+        return JsonResponse(model_to_dict(resource), safe=False)
+        # except Exception as e:
+        #     return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_resource,object_arg_name='id')
@@ -49,7 +49,8 @@ def get_manage_resource(request, id):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
-        Resource.objects.filter(id=id).delete()
+        resource = Resource.objects.filter(id=id).first()
+        resource.delete()
         return JsonResponse({'message': "Success"}, safe=False)
 
 @csrf_exempt

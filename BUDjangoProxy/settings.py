@@ -58,7 +58,8 @@ MIDDLEWARE = ['django.middleware.security.SecurityMiddleware',
             'BUDjangoProxyApp.middleware.customRouting.NormalizeRequestDataMiddleware',
               'BUDjangoProxyApp.middleware.customRouting.DynamicRoutingMiddleware',
               'BUDjangoProxyApp.middleware.userAuthentication.UserAuthenticationMiddleware',
-              'BUDjangoProxyApp.middleware.userAuthentication.NoCacheAuthMiddleware'
+              'BUDjangoProxyApp.middleware.userAuthentication.NoCacheAuthMiddleware',
+              'BUDjangoProxyApp.middleware.userAuthentication.RequestContextMiddleware'
               ]
 
 ROOT_URLCONF = 'BUDjangoProxy.urls'

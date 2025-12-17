@@ -1,7 +1,7 @@
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.utils.translation.trans_null import activate
 from django.utils.deprecation import MiddlewareMixin
-
+from .request_context import set_request_user_info, set_request_context
 
 from BUDjangoProxyApp.models import User, APIDeveloper
 import base64
@@ -22,7 +22,6 @@ class UserAuthenticationMiddleware:
 
         auth_header = request.META.get('HTTP_AUTHORIZATION')
 
-        # if
         if not auth_header or not auth_header.startswith('Basic '):
             return self.prompt_for_credentials()
 
@@ -45,6 +44,7 @@ class UserAuthenticationMiddleware:
         except User.DoesNotExist:
             return JsonResponse({"error": "Unauthorized developer"}, status=403)
 
+        set_request_user_info(current_user)
         return self.get_response(request)
 
     @staticmethod
@@ -64,3 +64,12 @@ class NoCacheAuthMiddleware(MiddlewareMixin):
         response["Pragma"] = "no-cache"
         response["Expires"] = "0"
         return response
+
+
+class RequestContextMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        set_request_context(request)
+        return self.get_response(request)
