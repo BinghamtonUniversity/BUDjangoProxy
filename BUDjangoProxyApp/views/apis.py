@@ -22,8 +22,8 @@ def get_create_apis(request):
     elif request.method == 'POST':
         try:
             request_data = request.data
-            request_data['created_by'] = request.user.id
-            request_data['updated_by'] = request.user.id
+            request_data['created_by'] = request.user
+            request_data['updated_by'] = request.user
             request_data['user_id'] = request.user.id
             api = API(**request_data)
             api.save()
@@ -34,8 +34,8 @@ def get_create_apis(request):
                                       version_models = [],
                                       version_views = [],
                                       version_urls=[],
-                                      created_by=request.user.id,
-                                      updated_by=request.user.id,
+                                      created_by=request.user,
+                                      updated_by=request.user,
                                       stable=False)
             api_version.save()
             return JsonResponse(model_to_dict(api), safe=False)
