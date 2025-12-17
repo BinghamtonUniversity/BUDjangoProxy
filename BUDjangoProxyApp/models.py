@@ -337,6 +337,20 @@ def validate_code(sender, instance=None, **kwargs):
 
 
 EXISTING_TYPES = ["Resource","APIInstance","Environment"]
+HIDDEN_FIELDS = ["app_secret","encrypted_app_secret"]
+
+def password_hide(instance_dict):
+    if 'resource_type' in instance_dict and instance_dict['resource_type'] =='secret':
+        instance_dict['config']['value'] = "***"
+    elif 'resource_type' in instance_dict and (instance_dict['resource_type'] =='oracle' or instance_dict['resource_type'] =='mysql'):
+        instance_dict['config']['pass'] = "***"
+    else:
+        for field in instance_dict.keys():
+            if field in HIDDEN_FIELDS:
+                instance_dict[field] = "***"
+
+    return instance_dict
+
 
 # @receiver(pre_save, sender=Resource)
 def update_activity_logger(sender, instance, **kwargs):
@@ -364,8 +378,8 @@ def update_activity_logger(sender, instance, **kwargs):
     ActivityLog.objects.create(
         event_id=instance.id,
         event=sender.__name__,
-        old=model_to_dict(old_instance) if not isinstance(old_instance, list) else old_instance,
-        new=model_to_dict(instance) if instance else [],
+        old=password_hide(model_to_dict(old_instance)) if not isinstance(old_instance, list) else old_instance,
+        new=password_hide(model_to_dict(instance)) if instance else [],
         user_id = get_request_user_info(),
         action = request.method,
         type= environment_type
@@ -392,7 +406,7 @@ def post_activity_logger(sender, instance, **kwargs):
         event_id=instance.id,
         event=sender.__name__,
         old=[],
-        new=model_to_dict(instance),
+        new=password_hide(model_to_dict(instance)),
         user_id = get_request_user_info(),
         action = request.method,
         type=environment_type
@@ -423,7 +437,7 @@ def delete_activity_logger(sender, instance, **kwargs):
     ActivityLog.objects.create(
         event_id=instance.id,
         event=sender.__name__,
-        old=model_to_dict(old_instance),
+        old=password_hide(model_to_dict(old_instance)),
         new=[],
         user_id=get_request_user_info(),
         action=request.method,

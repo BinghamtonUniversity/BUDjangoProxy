@@ -24,13 +24,13 @@ def get_create_api_users(request):
         except Environment.DoesNotExist:
             return JsonResponse({'error': 'Environment not found'}, status=404)
 
-        try:
-            api_user = APIUser(**request_data)
-            api_user.set_password(api_user.app_secret)
+        # try:
+        api_user = APIUser(**request_data)
+        api_user.set_password(api_user.app_secret)
 
-            return JsonResponse(model_to_dict(api_user), safe=False)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse(model_to_dict(api_user), safe=False)
+        # except Exception as e:
+        #     return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_api_user,object_arg_name='id')
