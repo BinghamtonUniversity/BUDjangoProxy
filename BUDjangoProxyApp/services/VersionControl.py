@@ -30,6 +30,7 @@ class VersionControl():
             "summary": api_version_metadata.summary,
             "description": api_version_metadata.description,
             "stable": api_version_metadata.stable,
+            "files":[{"name":x['name']} for x in api_version_metadata.version_files],
             "resources": api_version_metadata.resources,
             "routes": api_version_metadata.version_urls,
             "options": api_version_metadata.options,

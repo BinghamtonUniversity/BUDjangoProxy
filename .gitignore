@@ -176,4 +176,4 @@ cython_debug/
 .idea
 .DS_Store
 BUDjangoProxyApp/dynamic_apps
-BUDjangoProxyApp/migrations/
+BUDjangoProxyApp/migrations/*

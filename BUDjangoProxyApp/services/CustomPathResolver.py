@@ -1,7 +1,7 @@
 import importlib
 import json
 import sys
-
+from ..lib.helpers import clear_cached_modules
 from django.urls.resolvers import get_resolver, RegexPattern
 from django.urls import resolve, Resolver404, include, path, URLResolver
 
@@ -28,24 +28,18 @@ class CustomPathResolver:
         base_prefix = f"BUDjangoProxyApp.dynamic_apps.{instance_id}"
         module_path = f"{base_prefix}.urls"
 
-        def clear_cached_modules():
-            for m in list(sys.modules.keys()):
-                if m.startswith(base_prefix):
-                    del sys.modules[m]
-
         # Check if the module is already loaded and reload it to pick up changes
         if refresh_required:
-            clear_cached_modules()
+            clear_cached_modules(base_prefix)
 
         try:
             # Try loading fresh module (may be cached if no refresh)
             urls_module = importlib.import_module(module_path)
         except Exception:
             # IF IMPORT FAILS → clear cache and re-import
-            clear_cached_modules()
+            clear_cached_modules(base_prefix)
             urls_module = importlib.import_module(module_path)
 
-        # instance_version = api_instance.get_instance_version()
 
         # Get the URL patterns from the module
         dynamic_urlconf = getattr(urls_module, 'urlpatterns', [])
@@ -63,12 +57,9 @@ class CustomPathResolver:
         # Create a URLResolver directly with the dynamic patterns
         resolver = URLResolver(RegexPattern(r'^/'), urlconf_name=dynamic_urlconf)
 
-        print("resolver", resolver)
-
         # Rewrite the request path to match the dynamic URL patterns
         adjusted_path = '//'+'/'.join(request_path[1:]) + ('/' if request.path.endswith('/') else '')
         request.path_info = adjusted_path
-        print(f"Adjusted path: {adjusted_path}")
 
         resolver_match = resolver.resolve(adjusted_path)
 
@@ -76,8 +67,6 @@ class CustomPathResolver:
         args = resolver_match.args
         kwargs = resolver_match.kwargs
         request.data.update(dict(kwargs))
-        # print(f"View function Name: {view_func.__name__}, args: {args}, kwargs: {kwargs}")
-
 
         # Call the view function through the resolver
         return view_func, args, kwargs

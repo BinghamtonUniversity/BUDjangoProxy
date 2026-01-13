@@ -85,8 +85,6 @@ class DynamicAppManager:
         app_path = cls.get_app_path(api_instance.id)
         api_version = api_instance.api_version
 
-
-
         models_code = None
 
         if not api_version:

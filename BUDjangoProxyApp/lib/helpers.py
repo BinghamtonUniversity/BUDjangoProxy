@@ -4,6 +4,7 @@ import os
 from django.forms import model_to_dict
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values, DYNAMIC_APPS_DIR
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,10 @@ def prepare_new_views_file(instance_id, models, views, urls,files=None):
     
     {view['content'].replace('\n', '\n    ')}
 """
+
+    # Clean out the previously imported modules to re-import the files as the module
+    clear_cached_modules(f"BUDjangoProxyApp.dynamic_apps.{instance_id}")
+
     appended_files = ""
     if files is not None:
         for file in files:
@@ -289,3 +294,9 @@ def cleanup_dynamic_app_directory(full_path, allowed_files):
                 print(f"Error removing {filename}: {e}")
 
     return True
+
+
+def clear_cached_modules(base_prefix):
+    for m in list(sys.modules.keys()):
+        if m.startswith(base_prefix):
+            del sys.modules[m]
