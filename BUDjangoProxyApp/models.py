@@ -253,7 +253,7 @@ class Scheduler(models.Model):
     cron = models.CharField(max_length=255)
     api_instance = models.ForeignKey(APIInstance, to_field='id',db_column='api_instance_id', on_delete=models.CASCADE,db_constraint=True)
     route = models.CharField(max_length=255, null=True, blank=True)
-    args = models.JSONField(default=None, encoder=DjangoJSONEncoder)
+    args = models.JSONField(default=None, encoder=DjangoJSONEncoder, null=True, blank=True)
     verb = models.CharField(default='GET', max_length=255)
     enabled = models.BooleanField(default=True, db_column='enabled')
     last_exec_cron = models.DateTimeField(null=True)
