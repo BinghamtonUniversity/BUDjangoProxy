@@ -7,6 +7,9 @@ from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.environments import *
 
+from dotenv import dotenv_values
+env_values = dotenv_values(".env")
+
 @csrf_exempt
 @policy(can_get_create_environment)
 def get_create_environments(request):
@@ -14,10 +17,11 @@ def get_create_environments(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(Environment.objects.all().values()), safe=False)
+        return JsonResponse(list(Environment.objects.filter(server_name=env_values['SERVER_NAME']).all().values()), safe=False)
     elif request.method == 'POST':
         try:
             environment = Environment(**request.data)
+            environment.server_name = env_values['SERVER_NAME']
             environment.save()
             return JsonResponse(model_to_dict(environment), safe=False)
         except Exception as e:
@@ -30,7 +34,7 @@ def get_manage_environment(request,id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        environment = get_object_or_404(Environment, id=id)
+        environment = get_object_or_404(Environment, id=id, server_name=env_values['SERVER_NAME'])
         return JsonResponse(model_to_dict(environment), safe=False)
     elif request.method == 'PUT':
         try:
@@ -46,7 +50,7 @@ def get_manage_environment(request,id):
             return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         try:
-            Environment.objects.filter(id=id).delete()
+            Environment.objects.filter(id=id, server_name=env_values['SERVER_NAME']).delete()
             return JsonResponse({'message': "Success"}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)

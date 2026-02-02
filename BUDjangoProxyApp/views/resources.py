@@ -5,6 +5,8 @@ from django.views.decorators.csrf import csrf_exempt
 from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.resources import *
+from dotenv import dotenv_values
+env_values = dotenv_values(".env")
 
 @csrf_exempt
 @policy(can_get_create_resource)
@@ -13,7 +15,7 @@ def get_create_resources(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(Resource.objects.all().values()), safe=False)
+        return JsonResponse(list(Resource.objects.all().filter(environment__server_name=env_values['SERVER_NAME']).values()), safe=False)
     elif request.method == 'POST':
         # try:
         resource = Resource(**request.data)
@@ -44,12 +46,12 @@ def get_manage_resource(request, id):
             elif request_data['resource_type'] == 'oracle' or request_data['resource_type'] == 'mysql' or request_data['resource_type'] == 'sqlsrv':
                 request_data['config']['pass'] = LaravelEncryptor().encrypt(request_data['config']['pass'])
 
-            Resource.objects.filter(id=id).update(**request_data)
-            return JsonResponse(model_to_dict(Resource.objects.get(id=id)), safe=False)
+            Resource.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME']).update(**request_data)
+            return JsonResponse(model_to_dict(Resource.objects.get(id=id, environment__server_name=env_values['SERVER_NAME'])), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
-        resource = Resource.objects.filter(id=id).first()
+        resource = Resource.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME']).first()
         resource.delete()
         return JsonResponse({'message': "Success"}, safe=False)
 
@@ -59,4 +61,4 @@ def get_resources_by_type(request, type):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    return JsonResponse(list(Resource.objects.filter(type=type).values()), safe=False)
+    return JsonResponse(list(Resource.objects.filter(type=type, environment__server_name=env_values['SERVER_NAME']).values()), safe=False)

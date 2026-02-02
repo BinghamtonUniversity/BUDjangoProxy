@@ -6,6 +6,9 @@ from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.api_users import *
 from BUDjangoProxyApp.lib.helpers import instance_to_dict
+from dotenv import dotenv_values
+env_values = dotenv_values(".env")
+
 
 @csrf_exempt
 @policy(can_get_create_api_user)
@@ -14,11 +17,11 @@ def get_create_api_users(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(APIUser.objects.all().values()), safe=False)
+        return JsonResponse(list(APIUser.objects.filter(environment__server_name=env_values['SERVER_NAME']).all().values()), safe=False)
     elif request.method == 'POST':
         request_data = request.data
         try:
-            environment = Environment.objects.get(id=int(request_data['environment_id']) if 'environment_id' in request_data else None)
+            environment = Environment.objects.get(id=int(request_data['environment_id']) if 'environment_id' in request_data else None, server_name=env_values['SERVER_NAME'])
             request_data['environment'] = environment
             del request_data['environment_id']
         except Environment.DoesNotExist:
@@ -60,7 +63,7 @@ def manage_api_users(request, id):
 
     elif request.method == 'DELETE':
         try:
-            APIUser.objects.filter(id=id).delete()
+            APIUser.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME']).delete()
             return JsonResponse({'message': "Success"}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
@@ -71,7 +74,7 @@ def decrypted_app_secret(request,id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
     try:
-        api_user = APIUser.objects.filter(id=id).first()
+        api_user = APIUser.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME']).first()
         return JsonResponse({'app_secret':api_user.decrypt_password()},safe=False)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)

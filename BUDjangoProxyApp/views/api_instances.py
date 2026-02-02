@@ -10,6 +10,8 @@ from ..policies.api_instances import *
 import os
 import shutil
 import BUDjangoProxy.settings as settings
+from dotenv import dotenv_values
+env_values = dotenv_values(".env")
 
 @csrf_exempt
 @policy(can_get_create_api_instance)
@@ -18,13 +20,16 @@ def get_create_api_instances(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(APIInstance.objects.all().values("id", "name","route",
-                                                                  "api_id","api_version_id",
-                                                                  "environment_id","resources",
-                                                                  "options","route_user_map",
-                                                                  "public", "errors",
-                                                                  "created_at", "updated_at"
-        )
+        return JsonResponse(list(APIInstance.objects
+                                 .filter(environment__server_name=env_values['SERVER_NAME'],
+                                         api__api_type='python')
+                                 .all()
+                                 .values("id", "name","route",
+                                  "api_id","api_version_id",
+                                  "environment_id","resources",
+                                  "options","route_user_map",
+                                  "public", "errors",
+                                  "created_at", "updated_at")
                                  ), safe=False)
     elif request.method == 'POST':
         try:
@@ -43,14 +48,14 @@ def get_manage_api_instance(request, id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        request_data = APIInstance.objects.get(id=id)
+        request_data = APIInstance.objects.get(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python')
         response_data = instance_to_dict(request_data, ['api', 'environment', 'api_version'])
 
         return JsonResponse(response_data,safe=False)
     elif request.method == 'PUT':
         # try:
         request_data = request.data
-        api_instance = APIInstance.objects.filter(id=id).first()
+        api_instance = APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python').first()
         api_instance.name = request_data['name']
         api_instance.route = request_data['route']
         api_instance.route_user_map = request_data['route_user_map']
@@ -60,14 +65,17 @@ def get_manage_api_instance(request, id):
         api_instance.public = request_data['public']
         api_instance.save()
 
-        response_data = instance_to_dict(APIInstance.objects.get(id=id), ['api', 'environment', 'api_version'])
+        response_data = instance_to_dict(APIInstance.objects.get(id=id,
+                                                                 environment__server_name=env_values['SERVER_NAME'],
+                                                                 api__api_type='python'
+                                                                 ), ['api', 'environment', 'api_version'])
 
         return JsonResponse(response_data, safe=False)
         # except Exception as e:
         #     return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         try:
-            APIInstance.objects.filter(id=id).delete()
+            APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python').delete()
 
             # Deleting the files/folders for that instance under dynamic_apps directory
             instance_folder = os.path.join(settings.BASE_DIR, "BUDjangoProxyApp", "dynamic_apps",f"{id}")

@@ -18,7 +18,8 @@ def get_create_apis(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(API.objects.all().values()), safe=False)
+        return JsonResponse(list(API.objects.filter(api_type='python').all().values()), safe=False)
+
     elif request.method == 'POST':
         try:
             request_data = request.data
@@ -26,6 +27,7 @@ def get_create_apis(request):
             request_data['updated_by'] = request.user
             request_data['user_id'] = request.user.id
             api = API(**request_data)
+            api.api_type = 'python'
             api.save()
             api_version  = APIVersion(api= api,
                                       version_files=[],
@@ -72,13 +74,13 @@ def get_api_versions(request, id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    return JsonResponse(list(APIVersion.objects.filter(api_id=id).values('id','description','summary','stable','created_at')), safe=False)
+    return JsonResponse(list(APIVersion.objects.filter(api_id=id, api__api_type='python').values('id','description','summary','stable','created_at')), safe=False)
 
 @csrf_exempt
 def get_api_version_code(request, api_id, version_id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
-    request_data = get_object_or_404(APIVersion, id=version_id, api_id=api_id)
+    request_data = get_object_or_404(APIVersion, id=version_id, api_id=api_id, api__api_type='python')
     return JsonResponse(model_to_dict(request_data), safe=False)
 
 
@@ -118,7 +120,7 @@ def manage_api_version_code(request, id):
     try:
         api_version = APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
     except APIVersion.DoesNotExist:
-        api_version = APIVersion(api_id=id, stable=False, created_by=1, updated_by=1)
+        api_version = APIVersion(api_id=id, stable=False, created_by=request.user, updated_by=request.user)
         api_version.stable = False
 
     try:
