@@ -16,7 +16,7 @@ def get_create_scheduler(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(Scheduler.objects.filter(environment__server_name=env_values['SERVER_NAME']).all().values()), safe=False)
+        return JsonResponse(list(Scheduler.objects.filter(api_instance__environment__server_name=env_values['SERVER_NAME']).all().values()), safe=False)
     elif request.method == 'POST':
         try:
             scheduler = Scheduler(**request.data)
@@ -33,7 +33,7 @@ def get_manage_scheduler(request, id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(model_to_dict(Scheduler.objects.get(id=id,environment__server_name=env_values['SERVER_NAME'])),safe=False)
+        return JsonResponse(model_to_dict(Scheduler.objects.get(id=id,api_instance__environment__server_name=env_values['SERVER_NAME'])),safe=False)
     elif request.method == 'PUT':
         try:
             request_data = request.data
@@ -44,7 +44,7 @@ def get_manage_scheduler(request, id):
             return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         try:
-            Scheduler.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME']).delete()
+            Scheduler.objects.filter(id=id, api_instance__environment__server_name=env_values['SERVER_NAME']).delete()
 
             return JsonResponse({'message': "Success"}, status=200)
         except Exception as e:
