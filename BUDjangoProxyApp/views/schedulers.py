@@ -7,6 +7,10 @@ from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.schedulers import *
 from dotenv import dotenv_values
+from django.utils import timezone
+from BUDjangoProxyApp.lib.execute_task import execute_task
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
+
 env_values = dotenv_values(".env")
 
 @csrf_exempt
@@ -37,7 +41,7 @@ def get_manage_scheduler(request, id):
     elif request.method == 'PUT':
         try:
             request_data = request.data
-            APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME']).update(**request_data)
+            Scheduler.objects.filter(id=id, api_instance__environment__server_name=env_values['SERVER_NAME']).update(**request_data)
 
             return JsonResponse(model_to_dict(Scheduler.objects.get(id=id)), safe=False)
         except Exception as e:
@@ -47,5 +51,20 @@ def get_manage_scheduler(request, id):
             Scheduler.objects.filter(id=id, api_instance__environment__server_name=env_values['SERVER_NAME']).delete()
 
             return JsonResponse({'message': "Success"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+# @policy(can_manage_scheduler,object_arg_name='id')
+def run_schedule(request, id):
+    if request.method not in ['GET']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
+    if request.method == 'GET':
+        try:
+            schedule = Scheduler.objects.get(id=id)
+            # print(schedule)
+            execute_task(schedule, DynamicAppManager)
+            return JsonResponse(model_to_dict(Scheduler.objects.get(id=id))['last_response'], safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)

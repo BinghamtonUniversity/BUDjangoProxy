@@ -5,7 +5,7 @@ from django.db import models
 from django.http import JsonResponse
 from django.urls import path, include
 from django.conf import settings
-from ..models import Resource
+from ..models import Resource, APIInstance
 import ast
 import astor
 from ..lib import helpers
@@ -13,6 +13,7 @@ from dotenv import dotenv_values
 from django.db import connections
 from BUDjangoProxyApp.services.OracleDB import OracleDB
 import functools
+from BUDjangoProxyApp.services.VersionControl import VersionControl
 
 env_values = dotenv_values(".env")
 
@@ -26,11 +27,24 @@ class DynamicAppManager:
     instance_db_registry = {}
     instance_options = {}
     instance_resources = {}
+    _initialized = False
+
+    @classmethod
+    def initialize(cls, api_instance=None):
+        if api_instance is not None:
+            cls._load_api_instance(APIInstance.objects.filter(id=api_instance).first())
+            cls._initialized = True
+            return
+
+        if cls._initialized:
+            return
+        cls._reload_all_instances()
+        cls._initialized = True
 
 
     # To Load instances
     @classmethod
-    def load_api_instance(cls, api_instance):
+    def _load_api_instance(cls, api_instance):
         """
         Reload the API instance by creating or updating the app and its components.
         """
@@ -38,16 +52,16 @@ class DynamicAppManager:
 
     # Reloading all the instances on request
     @classmethod
-    def reload_all_instances(cls, version=None):
+    def _reload_all_instances(cls, version=None):
         """
         Reload all API instances dynamically.
         """
         from BUDjangoProxyApp.models import APIInstance
-        instances = APIInstance.objects.select_related('api', 'api_version_id', 'environment').all()
+        instances = APIInstance.objects.filter(environment__server_name=env_values['SERVER_NAME']).select_related('api', 'api_version_id', 'environment').all()
 
         for instance in instances:
             try:
-                cls.load_api_instance(instance)
+                cls._load_api_instance(instance)
             except Exception as e:
                 logger.error(e)
 
@@ -78,14 +92,17 @@ class DynamicAppManager:
 
     ### INSTANCE MANAGEMENT ###
     @classmethod
-    def create_or_update_app(cls, api_instance):
+    def create_or_update_app(cls, api_instance, refresh_required = False):
         """
         Create or update the dynamic app for an API instance.
         """
         app_path = cls.get_app_path(api_instance.id)
         api_version = api_instance.api_version
-
+        version_control = VersionControl()
         models_code = None
+        views_code = None
+        urls_code = None
+
 
         if not api_version:
             return JsonResponse({"error":"Version does not exist"})
@@ -120,9 +137,10 @@ class DynamicAppManager:
                 cls.register_db(api_instance.id, class_config)
             except Exception as e:
                 logger.error(e)
-
-        # Create new additional files
-        helpers.prepare_new_additional_files(api_version, api_instance, app_path)
+        if not version_control.file_integrity_check(api_instance):
+            print("Updating the additional files...")
+            # Create new additional files
+            helpers.prepare_new_additional_files(api_version, api_instance, app_path)
 
         if api_version.version_views != "" and api_version.version_views is not None:
             views_code = helpers.prepare_new_views_file(api_instance.id,
@@ -140,20 +158,25 @@ class DynamicAppManager:
         if models_code:
             helpers.validate_code(models_code)
 
-        # except json.JSONDecodeError as e:
-        #     logger.error(f"Failed to decode code_content for APIInstance {api_instance.id}: {e}")
-        #     return
+            # except json.JSONDecodeError as e:
+            #     logger.error(f"Failed to decode code_content for APIInstance {api_instance.id}: {e}")
+            #     return
+        if not version_control.file_integrity_check(api_instance):
 
-        # Write apps to the files first
-        helpers.write_file(os.path.join(app_path, "__init__.py"), "")  # Ensure it's a Python package
-        if models_code:
-            helpers.write_file(os.path.join(app_path, "models.py"), models_code)
+            print("Updating the files...")
+            # Write apps to the files first
+            helpers.write_file(os.path.join(app_path, "__init__.py"), "")  # Ensure it's a Python package
+            if models_code:
+                helpers.write_file(os.path.join(app_path, "models.py"), models_code)
 
-        helpers.write_file(os.path.join(app_path, "views.py"), views_code)
-        helpers.write_file(os.path.join(app_path, "urls.py"), urls_code)
-        helpers.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
+            helpers.write_file(os.path.join(app_path, "views.py"), views_code)
+            helpers.write_file(os.path.join(app_path, "urls.py"), urls_code)
+            helpers.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
 
-        # Register the models/views/urls
+            # Update the version control file
+            version_control.file_reload(api_instance, api_version)
+
+            # Register the models/views/urls
         if models_code:
             cls.register_models(api_instance.id, models_code, resources_mapping)
 
@@ -311,6 +334,12 @@ class Instance{instance_id}Config(AppConfig):
         """
         Retrieve a specific view for a given route dynamically.
         """
+        if not cls._initialized:
+            raise RuntimeError(
+                "DynamicAppManager not initialized. "
+                "Call DynamicAppManager.initialize() at process startup."
+            )
+
         instance_id = api_instance.id
         instance_views = cls.instance_view_registry.get(instance_id, {})
         api_version = api_instance.get_instance_version()

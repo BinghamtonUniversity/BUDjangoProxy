@@ -11,7 +11,7 @@ class DynamicRoutingMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
-        DynamicAppManager.reload_all_instances()
+        DynamicAppManager.initialize()
 
     def __call__(self, request):
         if any(request.path.startswith(path) for path in self.EXCLUDED_PATHS):

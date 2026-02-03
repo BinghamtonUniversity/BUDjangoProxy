@@ -254,13 +254,13 @@ class Scheduler(models.Model):
     cron = models.CharField(max_length=255)
     api_instance = models.ForeignKey(APIInstance, to_field='id',db_column='api_instance_id', on_delete=models.CASCADE,db_constraint=True)
     route = models.CharField(max_length=255, null=True, blank=True)
-    args = models.JSONField(default=[], encoder=DjangoJSONEncoder, null=True, blank=True)
+    args = models.JSONField(default=list, encoder=DjangoJSONEncoder, null=True, blank=True)
     verb = models.CharField(default='GET', max_length=255)
     enabled = models.BooleanField(default=True, db_column='enabled')
     last_exec_cron = models.DateTimeField(null=True)
     last_exec_start = models.DateTimeField(null=True)
     last_exec_stop = models.DateTimeField(null=True)
-    last_response = models.JSONField(default={}, encoder=DjangoJSONEncoder, null=True, blank=True )
+    last_response = models.JSONField(default=dict, encoder=DjangoJSONEncoder, null=True, blank=True )
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
 
@@ -314,14 +314,14 @@ from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
 
 @receiver(post_save, sender=APIInstance)
 def reload_api_instance(sender, instance, **kwargs):
-    DynamicAppManager.load_api_instance(instance)
+    DynamicAppManager._load_api_instance(instance)
     logger.info(f"Reloaded API instance: {instance.api.name} for route: {instance.route}")
 
 @receiver(post_save, sender=APIVersion)
 def reload_api_version(sender, instance, **kwargs):
     instances = instance.version_instance.all()
     for api_instance in instances:
-        DynamicAppManager.load_api_instance(api_instance)
+        DynamicAppManager._load_api_instance(api_instance)
     logger.info(f"Reloaded all instances for API: {instance.api.name}")
 
 
@@ -338,7 +338,7 @@ def validate_code(sender, instance=None, **kwargs):
     helpers.validate_code(urls)
 
 
-EXISTING_TYPES = ["Resource","APIInstance","Environment"]
+EXISTING_TYPES = ["Resource","APIInstance","Environment", "Scheduler"]
 HIDDEN_FIELDS = ["app_secret","encrypted_app_secret"]
 
 def password_hide(instance_dict):
@@ -354,12 +354,12 @@ def password_hide(instance_dict):
     return instance_dict
 
 
-# @receiver(pre_save, sender=Resource)
 def update_activity_logger(sender, instance, **kwargs):
-    if sender == ActivityLog:
+    if sender == ActivityLog or sender == Scheduler:
         return
 
     request = get_request_context()
+
     if request.method != "PUT" or request.method != "PATCH":
         return
 
@@ -376,6 +376,8 @@ def update_activity_logger(sender, instance, **kwargs):
             environment_type = instance.type
         elif sender.__name__ == "Resource":
             environment_type = instance.type
+        elif sender.__name__ == "Scheduler":
+            environment_type = instance.api_instance.environment.type
 
     ActivityLog.objects.create(
         event_id=instance.id,
@@ -403,6 +405,8 @@ def post_activity_logger(sender, instance, **kwargs):
             environment_type = instance.type
         elif sender.__name__ == "Resource":
             environment_type = instance.type
+        elif sender.__name__ == "Scheduler":
+            environment_type = instance.api_instance.environment.type
 
     ActivityLog.objects.create(
         event_id=instance.id,

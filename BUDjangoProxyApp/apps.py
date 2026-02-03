@@ -12,7 +12,7 @@ class BUDjangoProxyAppConfig(AppConfig):
         from BUDjangoProxyApp.models import update_activity_logger, post_activity_logger,delete_activity_logger
 
         for model in apps.get_models():
-            if model.__name__!= 'ActivityLog':
+            if model.__name__!= 'ActivityLog' and model.__name__ !='Scheduler':
                 pre_save.connect(update_activity_logger, sender=model, weak=False)
                 post_save.connect(post_activity_logger, sender=model, weak=False)
                 pre_delete.connect(delete_activity_logger, sender=model, weak=False)

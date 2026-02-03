@@ -1,5 +1,4 @@
 from django.http import JsonResponse, HttpResponseNotAllowed
-from django.utils.translation.trans_null import activate
 from django.utils.deprecation import MiddlewareMixin
 from .request_context import set_request_user_info, set_request_context
 
