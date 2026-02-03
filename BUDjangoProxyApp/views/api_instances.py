@@ -53,26 +53,28 @@ def get_manage_api_instance(request, id):
 
         return JsonResponse(response_data,safe=False)
     elif request.method == 'PUT':
-        # try:
-        request_data = request.data
-        api_instance = APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python').first()
-        api_instance.name = request_data['name']
-        api_instance.route = request_data['route']
-        api_instance.route_user_map = request_data['route_user_map']
-        api_instance.api_version_id = request_data['api_version_id'] if 'api_version_id' in request_data and request_data['api_version_id'] else None
-        api_instance.resources = request_data['resources']
-        api_instance.options = request_data['options']
-        api_instance.public = request_data['public']
-        api_instance.save()
+        try:
+            request_data = request.data
+            api_instance = APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python').first()
+            api_version = APIVersion.objects.filter(id=request_data['api_version_id']).first()
 
-        response_data = instance_to_dict(APIInstance.objects.get(id=id,
-                                                                 environment__server_name=env_values['SERVER_NAME'],
-                                                                 api__api_type='python'
-                                                                 ), ['api', 'environment', 'api_version'])
+            api_instance.name = request_data['name']
+            api_instance.route = request_data['route']
+            api_instance.route_user_map = request_data['route_user_map']
+            api_instance.api_version_id = api_version
+            api_instance.resources = request_data['resources']
+            api_instance.options = request_data['options']
+            api_instance.public = request_data['public']
+            api_instance.save()
 
-        return JsonResponse(response_data, safe=False)
-        # except Exception as e:
-        #     return JsonResponse({"error": str(e)}, status=500)
+            response_data = instance_to_dict(APIInstance.objects.get(id=id,
+                                                                     environment__server_name=env_values['SERVER_NAME'],
+                                                                     api__api_type='python'
+                                                                     ), ['api', 'environment', 'api_version'])
+
+            return JsonResponse(response_data, safe=False)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         try:
             APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python').delete()
