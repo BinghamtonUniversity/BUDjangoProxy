@@ -360,7 +360,7 @@ def update_activity_logger(sender, instance, **kwargs):
 
     request = get_request_context()
 
-    if request.method != "PUT" or request.method != "PATCH":
+    if request.method != "PUT" and request.method != "PATCH":
         return
 
     try:
@@ -382,7 +382,7 @@ def update_activity_logger(sender, instance, **kwargs):
     ActivityLog.objects.create(
         event_id=instance.id,
         event=sender.__name__,
-        old=password_hide(model_to_dict(old_instance)) if not isinstance(old_instance, list) else old_instance,
+        old=password_hide(model_to_dict(old_instance)) if not isinstance(old_instance, list) else password_hide(old_instance),
         new=password_hide(model_to_dict(instance)) if instance else [],
         user_id = get_request_user_info(),
         action = request.method,
