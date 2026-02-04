@@ -35,7 +35,7 @@ class UserAuthenticationMiddleware:
             return JsonResponse({"error": "Missing authentication headers"}, status=401)
 
         try:
-            if root_api_user != self.root_api_user and root_api_password != self.root_api_password:
+            if root_api_user != self.root_api_user or root_api_password != self.root_api_password:
                 return JsonResponse({"error": "Unauthorized"}, status=403)
 
             current_user = User.objects.get(unique_id=unique_id)
