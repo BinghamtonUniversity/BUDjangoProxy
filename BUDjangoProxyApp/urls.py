@@ -37,7 +37,7 @@ urlpatterns = [
     # GET ALL API VERSIONS
     path('api_versions', view=apis.get_all_api_versions, name='get_all_api_versions'),
 
-    path('apis/<int:api_id>/versions/<int:version_id>', view=apis.get_api_version_code, name='get_api_version_code'),
+    path('api_versions/<int:version_id>', view=apis.get_api_version_code, name='get_api_version_code'),
     # GET API Version -> get the latest API version
     path('apis/<int:id>/versions/latest', view=apis.get_latest_api_version, name='get_latest_api_version'),
     # PUT API Version -> Publish the API
@@ -81,5 +81,5 @@ urlpatterns = [
 
     #Activity Logs Operations
     # GET Activity Logs
-    path('activity_logs', view=activity_logs.get_activity_log, name='get_activity_log')
+    path('activity_log', view=activity_logs.get_activity_log, name='get_activity_log')
 ]
