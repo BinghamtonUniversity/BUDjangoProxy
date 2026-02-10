@@ -12,7 +12,8 @@ def execute_task(task, loader_instance):
     task.last_exec_cron = timezone.now()
     task.last_exec_start = timezone.now()
     task.save(update_fields=["last_exec_cron", "last_exec_start"])
-
+    response = None
+    
     try:
         api_instance = task.api_instance
         if not api_instance:
@@ -69,7 +70,6 @@ def execute_task(task, loader_instance):
         response = view_func(request, *args, **kwargs)
         # try:
         task.last_response = json.loads(response.content.decode())
-        print(task.last_response)
     except Exception:
         task.last_response = {"raw": response.content.decode()}
         raise CommandError(response.content.decode())

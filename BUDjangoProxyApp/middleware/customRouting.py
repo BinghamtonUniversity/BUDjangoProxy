@@ -42,7 +42,7 @@ class DynamicRoutingMiddleware:
         refresh_required = False
         if not version_control.file_integrity_check(api_instance):
             refresh_required = True
-            DynamicAppManager.load_api_instance(api_instance)
+            DynamicAppManager._load_api_instance(api_instance)
 
         # Authenticate API user for every request
         api_user = self.authenticate_api_user(request, api_instance)
