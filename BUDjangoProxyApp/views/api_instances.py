@@ -78,13 +78,14 @@ def get_manage_api_instance(request, id):
     elif request.method == 'DELETE':
         try:
             APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python').delete()
-
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+        try:
             # Deleting the files/folders for that instance under dynamic_apps directory
             instance_folder = os.path.join(settings.BASE_DIR, "BUDjangoProxyApp", "dynamic_apps",f"{id}")
             shutil.rmtree(instance_folder)
 
-            return JsonResponse({'message': "Success"}, status=200)
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-
+            pass
+        finally:
+            return JsonResponse({'message': "Success"}, status=200)
