@@ -312,17 +312,17 @@ from django.dispatch import receiver
 from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
 
 
-@receiver(post_save, sender=APIInstance)
-def reload_api_instance(sender, instance, **kwargs):
-    DynamicAppManager._load_api_instance(instance)
-    logger.info(f"Reloaded API instance: {instance.api.name} for route: {instance.route}")
-
-@receiver(post_save, sender=APIVersion)
-def reload_api_version(sender, instance, **kwargs):
-    instances = instance.version_instance.all()
-    for api_instance in instances:
-        DynamicAppManager._load_api_instance(api_instance)
-    logger.info(f"Reloaded all instances for API: {instance.api.name}")
+# @receiver(post_save, sender=APIInstance)
+# def reload_api_instance(sender, instance, **kwargs):
+#     DynamicAppManager._load_api_instance(instance)
+#     logger.info(f"Reloaded API instance: {instance.api.name} for route: {instance.route}")
+#
+# @receiver(post_save, sender=APIVersion)
+# def reload_api_version(sender, instance, **kwargs):
+#     instances = instance.version_instance.all()
+#     for api_instance in instances:
+#         DynamicAppManager._load_api_instance(api_instance)
+#     logger.info(f"Reloaded all instances for API: {instance.api.name}")
 
 
 @receiver(pre_save, sender=APIVersion)
