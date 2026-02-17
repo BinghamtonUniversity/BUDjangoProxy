@@ -152,11 +152,11 @@ class APIInstance(models.Model):
 
 class APIDeveloper(models.Model):
     id = models.AutoField(primary_key=True)
-    api_developer = models.ForeignKey(User, db_column='user_id', to_field='id', on_delete=models.CASCADE,db_constraint=True)
+    user = models.ForeignKey(User, db_column='user_id', to_field='id', on_delete=models.CASCADE,db_constraint=True)
     api = models.ForeignKey(API, db_column='api_id', to_field='id', on_delete=models.CASCADE,db_constraint=True)
 
     class Meta:
-        unique_together = (('api_developer', 'api'))
+        unique_together = (('user_id', 'api'))
         db_table = 'api_developers'
 
 ENVIRONMENT_TYPE = (

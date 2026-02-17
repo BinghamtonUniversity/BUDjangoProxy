@@ -140,32 +140,35 @@ def manage_api_version_code(request, id):
 
 @csrf_exempt
 @policy(can_get_create_api_developers, object_arg_name='api_id')
-def get_create_api_developer(request, api_id):
+def get_api_developers(request, api_id):
     if request.method not in ['GET','POST']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
         return JsonResponse(list(APIDeveloper.objects.filter(api_id=api_id).values()), safe=False)
 
+@csrf_exempt
+@policy(can_manage_api_developers, object_arg_name='api_id')
+def create_delete_api_developer(request, api_id, user_id):
+    if request.method not in ['GET','POST','DELETE']:
+        return JsonResponse({"error":"Method not allowed"}, status=405)
+
+    if request.method == 'GET':
+        return JsonResponse(list(APIDeveloper.objects.filter(api_id=api_id, user_id=user_id).values()), safe=False)
+
     elif request.method == 'POST':
         try:
-            api_developer = APIDeveloper(api_id = api_id, api_developer_id = request.data['user_id'])
+            api_developer = APIDeveloper(api_id=api_id, user_id=user_id)
             api_developer.save()
             return JsonResponse(model_to_dict(api_developer), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
-
-@csrf_exempt
-@policy(can_manage_api_developers, object_arg_name='api_id')
-def delete_api_developer(request,api_id,user_id):
-    if request.method not in ['DELETE']:
-        return JsonResponse({"error":"Method not allowed"}, status=405)
-
-    try:
-        APIDeveloper.objects.filter(api=api_id, api_developer_id=user_id).delete()
-        return JsonResponse({'message': "Success"}, status=200)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    elif request.method == 'DELETE':
+        try:
+            APIDeveloper.objects.filter(api_id=api_id, user_id=user_id).delete()
+            return JsonResponse({'message': "Success"}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
 
 @csrf_exempt

@@ -3,7 +3,7 @@ from ..models import Resource, APIDeveloper
 
 def can_get_create_resource(request):
     if request.method == "GET":
-        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user).exists()
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user).exists()
         return request.user.admin or request.user.developer or is_api_developer
     else:
         if request.user.admin:

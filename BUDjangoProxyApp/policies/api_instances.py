@@ -3,7 +3,7 @@ from ..models import API, APIInstance, APIDeveloper
 
 def can_get_create_api_instance(request):
     if request.method == "GET":
-        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user).exists()
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user).exists()
         return request.user.admin or request.user.developer or is_api_developer
 
     if request.user.admin:
@@ -24,7 +24,7 @@ def can_manage_api_instance(request,id):
             return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 
     try:
-        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id, api=api_instance.api.id).exists()
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id, api=api_instance.api.id).exists()
     except APIDeveloper.DoesNotExist:
         return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 

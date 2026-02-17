@@ -3,7 +3,7 @@ from ..models import  APIDeveloper, Scheduler
 
 def can_get_create_scheduler(request):
     if request.method == "GET":
-        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user).exists()
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user).exists()
         return request.user.admin or request.user.developer or is_api_developer
 
     if request.user.active and (request.user.admin or request.user.developer):

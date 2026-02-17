@@ -4,7 +4,7 @@ from ..models import API, APIDeveloper, APIVersion, APIInstance
 
 def can_get_create_apis(request):
     if request.method == "GET":
-        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id).exists()
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id).exists()
         return request.user.admin or request.user.developer or is_api_developer
     else:
         if request.user.admin or request.user.developer:
@@ -25,7 +25,7 @@ def can_manage_api(request,id):
             return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 
     try:
-        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id, api=api.id).exists()
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id, api=api.id).exists()
     except APIDeveloper.DoesNotExist:
         return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 
@@ -44,7 +44,7 @@ def can_manage_api_version(request,id):
             return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 
     try:
-        is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id, api=api.id).exists()
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id, api=api.id).exists()
     except APIDeveloper.DoesNotExist:
         return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
 
@@ -57,7 +57,7 @@ def can_get_create_api_developers(request, api_id):
     except API.DoesNotExist:
         return False, JsonResponse({"error": "API Doesn't Exist"}, status=403)
 
-    is_api_developer = APIDeveloper.objects.filter(api_developer=request.user.id, api=api_id).exists()
+    is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id, api=api_id).exists()
 
     if request.method == "GET":
         return is_api_developer or request.user.admin or request.user.developer or api.user.unique_id == request.user.unique_id, api
