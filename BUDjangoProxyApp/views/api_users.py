@@ -75,6 +75,6 @@ def decrypted_app_secret(request,id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
     try:
         api_user = APIUser.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME']).first()
-        return JsonResponse({'app_secret':api_user.decrypt_password()},safe=False)
+        return JsonResponse({'api_secret':api_user.decrypt_password()},safe=False)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
