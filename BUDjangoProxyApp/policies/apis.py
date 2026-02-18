@@ -72,6 +72,6 @@ def can_manage_api_developers(request,api_id):
     except API.DoesNotExist:
         return False, JsonResponse({"error": "API Doesn't Exist"}, status=403)
 
-    if request.method == 'DELETE':
+    if request.method == 'DELETE' or request.method == 'POST':
         if request.user.admin or api.user.unique_id == request.user.unique_id:
             return True, api
