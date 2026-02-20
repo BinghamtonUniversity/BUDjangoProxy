@@ -74,11 +74,11 @@ urlpatterns = [
 
     #Schedulers Operations
     # GET, POST Schedulers
-    path('schedulers', view=schedulers.get_create_scheduler, name='get_create_scheduler'),
+    path('scheduler', view=schedulers.get_create_scheduler, name='get_create_scheduler'),
 
     # GET, PUT, DELETE Schedulers by ID
-    path('schedulers/<int:id>', view=schedulers.get_manage_scheduler, name='get_manage_scheduler'),
-    path('schedulers/<int:id>/run', view=schedulers.run_schedule, name='run_scheduler'),
+    path('scheduler/<int:id>', view=schedulers.get_manage_scheduler, name='get_manage_scheduler'),
+    path('scheduler/<int:id>/run', view=schedulers.run_schedule, name='run_scheduler'),
 
     #Activity Logs Operations
     # GET Activity Logs
