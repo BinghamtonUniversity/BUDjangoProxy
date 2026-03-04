@@ -132,19 +132,11 @@ def manage_api_version_code(request, id):
     incoming = parse(request.data['updated_at'])
     local = api_version.updated_at
 
-    # Make both aware in UTC if needed
-    # if timezone.is_naive(incoming):
-    #     incoming = timezone.make_aware(incoming, timezone.utc)
-    #
-    # if timezone.is_naive(local):
-    #     local = timezone.make_aware(local, timezone.utc)
-
     print(f"Incoming: {incoming}", f"Local: {local}")
     if api_version is None or api_version.stable:
         api_version = APIVersion(api_id=id, stable=False, created_by=request.user, updated_by=request.user)
     elif not (incoming >= local or 'force' in request.data):
         return JsonResponse({"error": model_to_dict(api_version)}, status=409)
-
 
     try:
         api_version.version_models = request.data['version_models'] if 'version_models' in request.data else []
