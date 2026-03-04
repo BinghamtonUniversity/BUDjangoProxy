@@ -382,7 +382,7 @@ def update_activity_logger(sender, instance, **kwargs):
         event=sender.__name__,
         old=password_hide(model_to_dict(old_instance)) if not isinstance(old_instance, list) else password_hide(old_instance),
         new=password_hide(model_to_dict(instance)) if instance else [],
-        user_id = get_request_user_info(),
+        user_id = get_request_user_info().unique_id,
         action = request.method,
         type= environment_type
     )
@@ -411,7 +411,7 @@ def post_activity_logger(sender, instance, **kwargs):
         event=sender.__name__,
         old=[],
         new=password_hide(model_to_dict(instance)),
-        user_id = get_request_user_info(),
+        user_id = get_request_user_info().unique_id,
         action = request.method,
         type=environment_type
     )
@@ -443,7 +443,7 @@ def delete_activity_logger(sender, instance, **kwargs):
         event=sender.__name__,
         old=password_hide(model_to_dict(old_instance)),
         new=[],
-        user_id=get_request_user_info(),
+        user_id=get_request_user_info().unique_id,
         action=request.method,
         type=environment_type
     )

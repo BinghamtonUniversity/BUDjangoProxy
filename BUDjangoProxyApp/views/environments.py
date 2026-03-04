@@ -21,6 +21,8 @@ def get_create_environments(request):
     elif request.method == 'POST':
         try:
             environment = Environment(**request.data)
+            environment.updated_at = timezone.now()
+            environment.created_at = timezone.now()
             environment.server_name = env_values['SERVER_NAME']
             environment.save()
             return JsonResponse(model_to_dict(environment), safe=False)
