@@ -13,16 +13,11 @@ def can_get_create_api_user(request):
         return False
 
 
-def can_manage_api_user(request, id):
-    try:
-        api_user = APIUser.objects.get(id=id)
-    except APIUser.DoesNotExist:
-        api_user = None
+def can_manage_api_user(request):
+    return request.user.admin or request.user.developer
 
-    if request.method == 'DELETE':
-        if request.user.admin:
-            return True, api_user
-        else:
-            return False, JsonResponse({"error": "Not authorized to manage environments"}, status=403)
+def can_see_secret(request):
+    if request.method != "GET":
+        return False
 
-    return request.user.admin or request.user.developer, api_user
+    return request.user.admin or request.user.developer

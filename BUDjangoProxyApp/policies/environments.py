@@ -1,16 +1,13 @@
 from django.http import request, JsonResponse
-from ..models import Environment, APIDeveloper
+from ..models import Environment, APIDeveloper, API
 
 
 def can_get_create_environment(request):
     if request.method == "GET":
         is_api_developer = APIDeveloper.objects.filter(user_id=request.user).exists()
-        return request.user.admin or request.user.developer or is_api_developer
-
-    if request.user.admin:
-        return True
-    else:
-        return False
+        is_api_owner = API.objects.filter(user_id=request.user).exists()
+        return request.user.admin or request.user.developer or is_api_developer or is_api_owner
+    return request.user.admin
 
 def can_manage_environment(request,id):
     try:

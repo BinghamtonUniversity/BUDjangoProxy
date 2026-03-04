@@ -41,7 +41,7 @@ class Environment(models.Model):
     type = models.CharField(max_length=10, choices=environment_type, default='dev')
     server_name = models.CharField(max_length=200, null=False, blank=False, default=env_values['SERVER_NAME'])
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(db_column='updated_at',null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
@@ -59,7 +59,7 @@ class API(models.Model):
     api_type = models.CharField(max_length=20, default='php', blank=False, null=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE,db_column='user_id', db_constraint=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(db_column='updated_at',null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='api_created_by',to_field='id', db_column='created_by',db_constraint=True)
     updated_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='api_updated_by', to_field='id', db_column='updated_by',db_constraint=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -83,8 +83,8 @@ class APIVersion(models.Model):
     options = models.JSONField(db_column='options' ,null=True, blank=True)
     version_files = models.JSONField(db_column='files', null=True, blank=True)
     resources = models.JSONField(default=dict, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(db_column='created_at',null=False, blank=False)
+    updated_at = models.DateTimeField(db_column='updated_at',null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by', db_column='user_id',db_constraint=True)
     updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_updated_by', db_column='updated_by',db_constraint=True)
 
@@ -112,7 +112,7 @@ class APIInstance(models.Model):
     public =models.BooleanField(default=False)
     errors = models.CharField(max_length=10, choices=error_types, default='none')
     created_at = models.DateTimeField(auto_now=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(db_column='updated_at',null=True, blank=True)
 
     class Meta:
         db_table = "api_instances"
@@ -291,7 +291,7 @@ class ActivityLog(models.Model):
         db_column='type',
         db_index=True
     )
-    user_id = models.ForeignKey(User, to_field='id', db_column='user_id', on_delete=models.CASCADE, db_constraint=True)
+    user_id = models.CharField(max_length=255, db_column='user_id', null=True, blank=True)
     comment = models.CharField(max_length=255, db_column='comment', null=True,blank=True)
     new = models.JSONField(default=None, encoder=DjangoJSONEncoder)
     old = models.JSONField(default=None, encoder=DjangoJSONEncoder)

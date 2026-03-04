@@ -38,7 +38,7 @@ def get_create_api_users(request):
             return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
-@policy(can_manage_api_user,object_arg_name='id')
+@policy(can_manage_api_user)
 def manage_api_users(request, id):
     if request.method not in ['GET','PUT','DELETE']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
@@ -71,7 +71,7 @@ def manage_api_users(request, id):
             return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
-@policy(can_manage_api_user,object_arg_name='id')
+@policy(can_see_secret)
 def decrypted_app_secret(request,id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)

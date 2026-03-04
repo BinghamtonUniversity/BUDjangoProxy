@@ -3,14 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from ..models import User, APIDeveloper
 
 def can_get_create_users(request):
-    if request.method == "GET":
-        is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id).exists()
-        return request.user.admin or request.user.developer or is_api_developer
-    else:
-        if request.user.admin:
-                return True
-        else:
-            return False
+   return request.user.admin
 
 def can_manage_user(request,id):
     try:

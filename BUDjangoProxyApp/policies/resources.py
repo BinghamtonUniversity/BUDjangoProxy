@@ -6,6 +6,7 @@ def can_get_create_resource(request):
         is_api_developer = APIDeveloper.objects.filter(user_id=request.user).exists()
         return request.user.admin or request.user.developer or is_api_developer
     else:
+
         if request.user.admin:
             return True
         else:
@@ -24,4 +25,4 @@ def can_manage_resource(request,id):
         else:
             return False, JsonResponse({"error": "Not authorized to manage the resources"}, status=403)
 
-    return request.user.admin or request.user.developer, resource
+    return request.user.admin, resource

@@ -1,3 +1,4 @@
+import datetime
 import json
 from urllib import request
 from django.forms import model_to_dict
@@ -28,6 +29,8 @@ def get_create_apis(request):
             request_data['user_id'] = request.user.id
             api = API(**request_data)
             api.api_type = 'python'
+            api.created_at = datetime.datetime.now()
+            api.updated_at = datetime.datetime.now()
             api.save()
             api_version  = APIVersion(api= api,
                                       version_files=[],
@@ -38,6 +41,8 @@ def get_create_apis(request):
                                       version_urls=[],
                                       created_by=request.user,
                                       updated_by=request.user,
+                                      created_at=datetime.datetime.now(),
+                                      updated_at=datetime.datetime.now(),
                                       stable=False)
             api_version.save()
             return JsonResponse(model_to_dict(api), safe=False)
@@ -74,7 +79,7 @@ def get_api_versions(request, id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    return JsonResponse(list(APIVersion.objects.filter(api_id=id, api__api_type='python').values('id','description','summary','stable','created_at')), safe=False)
+    return JsonResponse(list(APIVersion.objects.filter(api_id=id, api__api_type='python',stable=True).values('id','description','summary','stable','created_at')), safe=False)
 
 @csrf_exempt
 def get_api_version_code(request, version_id):
@@ -117,11 +122,29 @@ def publish_api_version(request,id):
 def manage_api_version_code(request, id):
     if request.method not in ['PUT']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
-    try:
-        api_version = APIVersion.objects.filter(api=id, stable=False).latest('updated_at')
-    except APIVersion.DoesNotExist:
+
+    api_version = APIVersion.objects.filter(api=id, stable=False).latest('created_at')
+
+    if 'updated_at' not in request.data and 'force' not in request.data:
+        return JsonResponse({"error":model_to_dict(api_version)}, status=403)
+
+    from dateutil.parser import parse
+    incoming = parse(request.data['updated_at'])
+    local = api_version.updated_at
+
+    # Make both aware in UTC if needed
+    # if timezone.is_naive(incoming):
+    #     incoming = timezone.make_aware(incoming, timezone.utc)
+    #
+    # if timezone.is_naive(local):
+    #     local = timezone.make_aware(local, timezone.utc)
+
+    print(f"Incoming: {incoming}", f"Local: {local}")
+    if api_version is None or api_version.stable:
         api_version = APIVersion(api_id=id, stable=False, created_by=request.user, updated_by=request.user)
-        api_version.stable = False
+    elif not (incoming >= local or 'force' in request.data):
+        return JsonResponse({"error": model_to_dict(api_version)}, status=409)
+
 
     try:
         api_version.version_models = request.data['version_models'] if 'version_models' in request.data else []
@@ -139,7 +162,7 @@ def manage_api_version_code(request, id):
 
 
 @csrf_exempt
-@policy(can_get_create_api_developers, object_arg_name='api_id')
+@policy(can_api_developers, object_arg_name='api_id')
 def get_api_developers(request, api_id):
     if request.method not in ['GET','POST']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
