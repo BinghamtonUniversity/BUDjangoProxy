@@ -123,18 +123,23 @@ def manage_api_version_code(request, id):
     if request.method not in ['PUT']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    api_version = APIVersion.objects.filter(api=id, stable=False).latest('created_at')
+    api_version = APIVersion.objects.filter(api=id).latest('created_at')
+
 
     if 'updated_at' not in request.data and 'force' not in request.data:
         return JsonResponse({"error":model_to_dict(api_version)}, status=403)
 
     from dateutil.parser import parse
-    incoming = parse(request.data['updated_at'])
     local = api_version.updated_at
+    incoming = parse(request.data['updated_at'])
 
-    print(f"Incoming: {incoming}", f"Local: {local}")
+    # print(f"Incoming: {incoming}", f"Local: {local}")
     if api_version is None or api_version.stable:
-        api_version = APIVersion(api_id=id, stable=False, created_by=request.user, updated_by=request.user)
+        api_version = APIVersion(api_id=id, stable=False,
+                                 created_by=request.user,
+                                 updated_by=request.user,
+                                 created_at=timezone.now(),
+                                 updated_at = timezone.now())
     elif not (incoming >= local or 'force' in request.data):
         return JsonResponse({"error": model_to_dict(api_version)}, status=409)
 
