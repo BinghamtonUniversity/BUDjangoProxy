@@ -5,21 +5,13 @@ from BUDjangoProxyApp.services.DynamicLoader import *
 class VersionControl():
     def file_integrity_check(self, api_instance):
         api_version = api_instance.get_instance_version()
-        # try:
-        #     api_version_metadata = APIVersion.objects.only("id","updated_at").get(id=api_version.id)
-        # except APIVersion.DoesNotExist:
-        #     return False
-
-
         if os.path.exists(f"{DYNAMIC_APPS_DIR}/{api_instance.id}/api_version.json"):
             version_file = helpers.load_into_dict(f"{DYNAMIC_APPS_DIR}/{api_instance.id}/api_version.json")
-            if str(api_version.updated_at) != version_file['updated_at']:
-                # self.file_reload(api_instance, api_version_metadata, api_version)
+            if (str(api_version.updated_at) != version_file['updated_at']) or (str(api_version.updated_at) != str(api_instance.updated_at)):
                 return False
             else:
                 return True
         else:
-            # self.file_reload(api_instance, api_version_metadata, api_version)
             return False
 
 

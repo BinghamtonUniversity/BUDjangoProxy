@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.forms import model_to_dict
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNotFound
@@ -34,6 +36,7 @@ def get_create_api_instances(request):
     elif request.method == 'POST':
         try:
             api_instance = APIInstance(**request.data)
+            api_instance.updated_at = datetime.now()
             api_instance.save()
             response_data = instance_to_dict(api_instance, ['api', 'environment', 'api_version'])
 
@@ -65,6 +68,7 @@ def get_manage_api_instance(request, id):
             api_instance.resources = request_data['resources']
             api_instance.options = request_data['options']
             api_instance.public = request_data['public']
+            api_instance.updated_at = datetime.now()
             api_instance.save()
 
             response_data = instance_to_dict(APIInstance.objects.get(id=id,
