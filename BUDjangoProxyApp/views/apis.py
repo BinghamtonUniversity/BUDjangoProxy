@@ -1,4 +1,5 @@
 import datetime
+from django.utils.dateparse import parse_datetime
 import json
 from urllib import request
 from django.forms import model_to_dict
@@ -129,31 +130,30 @@ def manage_api_version_code(request, id):
     if 'updated_at' not in request.data and 'force' not in request.data:
         return JsonResponse({"error":model_to_dict(api_version)}, status=403)
 
-    from dateutil.parser import parse
     local = api_version.updated_at
-    incoming = parse(request.data['updated_at'])
+    incoming = parse_datetime(request.data.get('updated_at')) if request.data.get('updated_at') else None
 
-    # print(f"Incoming: {incoming}", f"Local: {local}")
+    print(f"Incoming: {incoming}", f"Local: {local}")
     if api_version is None or api_version.stable:
         api_version = APIVersion(api_id=id, stable=False,
                                  created_by=request.user,
                                  updated_by=request.user,
                                  created_at=timezone.now(),
-                                 updated_at = timezone.now())
+                                 updated_at=timezone.now())
+
     elif not (incoming >= local or 'force' in request.data):
         return JsonResponse({"error": model_to_dict(api_version)}, status=409)
-
     try:
-        api_version.version_models = request.data['version_models'] if 'version_models' in request.data else []
-        api_version.version_urls = request.data['version_urls'] if 'version_urls' in request.data else []
-        api_version.version_views = request.data['version_views'] if 'version_views' in request.data else []
-        api_version.version_files = request.data['version_files'] if 'version_files' in request.data else []
-        api_version.resources = request.data['resources'] if 'resources' in request.data else []
-        api_version.options = request.data['options'] if 'options' in request.data else []
+        api_version.version_models = request.data.get('version_models')
+        api_version.version_urls = request.data.get('version_urls')
+        api_version.version_views = request.data.get('version_views')
+        api_version.version_files = request.data.get('version_files')
+        api_version.resources = request.data.get('resources')
+        api_version.options = request.data.get('options')
         api_version.updated_at = timezone.now()
         api_version.save()
 
-        return JsonResponse(model_to_dict(api_version), safe=False)
+        return JsonResponse(model_to_dict(APIVersion.objects.get(id=api_version.id)), safe=False)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
