@@ -131,7 +131,10 @@ def manage_api_version_code(request, id):
         return JsonResponse({"error":model_to_dict(api_version)}, status=403)
 
     local = api_version.updated_at
-    incoming = parse_datetime(request.data.get('updated_at')) if request.data.get('updated_at') else None
+    if request.data.get('updated_at') is None:
+        request.data['updated_at'] = datetime.datetime.now(timezone.utc).isoformat()
+
+    incoming = parse_datetime(request.data.get('updated_at'))
 
     print(f"Incoming: {incoming}", f"Local: {local}")
     if api_version is None or api_version.stable:
@@ -151,6 +154,7 @@ def manage_api_version_code(request, id):
         api_version.resources = request.data.get('resources')
         api_version.options = request.data.get('options')
         api_version.updated_at = timezone.now()
+        api_version.updated_by = request.user
         api_version.save()
 
         return JsonResponse(model_to_dict(APIVersion.objects.get(id=api_version.id)), safe=False)

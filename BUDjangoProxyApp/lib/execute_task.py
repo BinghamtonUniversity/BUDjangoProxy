@@ -53,7 +53,6 @@ def execute_task(task, loader_instance):
         version_urls = api_instance.get_instance_version().version_urls
         current_version_url = next((url for url in version_urls if view_func.__name__ == url['view_name']), None)
 
-        # print(request.method, current_version_url['verb'])
         if request.method != "ALL" and request.method != current_version_url['verb']:
             task.last_response = {
                 "error": f"{request.method} method not allowed for this route",
@@ -71,8 +70,8 @@ def execute_task(task, loader_instance):
         # try:
         task.last_response = json.loads(response.content.decode())
     except Exception:
-        task.last_response = {"raw": response.content.decode()}
-        raise CommandError(response.content.decode())
+        task.last_response = {"raw": response.decode()}
+        raise CommandError(response.decode())
 
     except Exception as exc:
         task.last_response = {
