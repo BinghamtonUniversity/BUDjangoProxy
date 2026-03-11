@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.utils import timezone
+from datetime import timezone as dt_timezone
 from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.apis import *
@@ -132,7 +133,7 @@ def manage_api_version_code(request, id):
 
     local = api_version.updated_at
     if request.data.get('updated_at') is None:
-        request.data['updated_at'] = datetime.datetime.now(timezone.utc).isoformat()
+        request.data['updated_at'] = datetime.datetime.now(dt_timezone.utc).isoformat()
 
     incoming = parse_datetime(request.data.get('updated_at'))
 
