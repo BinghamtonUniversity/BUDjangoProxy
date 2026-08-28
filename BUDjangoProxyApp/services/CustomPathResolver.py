@@ -66,7 +66,10 @@ class CustomPathResolver:
         view_func = resolver_match.func
         args = resolver_match.args
         kwargs = resolver_match.kwargs
-        request.data.update(dict(kwargs))
+        if hasattr(request, 'data'):
+            request.data.update(dict(kwargs))
+        else:
+            request.data = dict(kwargs)
 
         # Call the view function through the resolver
         return view_func, args, kwargs
