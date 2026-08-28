@@ -92,7 +92,7 @@ def get_api_version_code(request, version_id):
 
 
 @csrf_exempt
-@policy(can_manage_api_version, object_arg_name='id')
+@policy(can_get_create_apis)
 def get_latest_api_version(request,id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)

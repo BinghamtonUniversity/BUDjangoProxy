@@ -26,6 +26,9 @@ def can_manage_api(request,id):
 
     is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id, api=api.id).exists()
 
+    if request.method == 'GET':
+        return is_api_developer or api.user.unique_id == request.user.unique_id or is_api_developer or request.user.developer or request.user.admin, api
+
     return is_api_developer or api.user.id == request.user.id, api
 
 def can_manage_api_version(request,id):

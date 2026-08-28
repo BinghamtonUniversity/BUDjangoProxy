@@ -21,15 +21,26 @@ def execute_task(task, loader_instance):
 
 
         factory = RequestFactory()
-        method = task.verb.lower()
-        path = f"{api_instance.route}/{task.route}"
+        if task.verb and task.verb.strip():
+            method = task.verb.lower()
+        else:
+            method = 'get'
 
-        request = getattr(factory, method)(
-            path,
-            data={p["name"]: p["value"] for p in task.args},
-            HTTP_HOST=api_instance.environment.domain,
-            format="json",
-        )
+        path = f"{api_instance.route}/{task.route}"
+        if task.args:
+            request = getattr(factory, method)(
+                path,
+                data={p["name"]: p["value"] for p in task.args},
+                HTTP_HOST=api_instance.environment.domain,
+                format="json",
+            )
+        else:
+            request = getattr(factory, method)(
+                path,
+                # data={p["name"]: p["value"] for p in task.args},
+                HTTP_HOST=api_instance.environment.domain,
+                format="json",
+            )
 
         request.dynamic_app_context = {
             "api_instance": api_instance,
@@ -40,7 +51,8 @@ def execute_task(task, loader_instance):
         # Attach execution metadata
         request.is_scheduled_task = True
         request.scheduler_id = task.id
-        request.data = {p["name"]: p["value"] for p in task.args}
+        if task.args:
+            request.data = {p["name"]: p["value"] for p in task.args}
 
 
         custom_resolver = CustomPathResolver()
