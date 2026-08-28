@@ -79,11 +79,11 @@ def execute_task(task, loader_instance):
         # Dynamically load and execute the view
         view_func = loader_instance.get_view(api_instance, view_func.__name__)
         response = view_func(request, *args, **kwargs)
-        # try:
-        task.last_response = json.loads(response.content.decode())
-    except Exception:
-        task.last_response = {"raw": response.decode()}
-        raise CommandError(response.decode())
+        try:
+            task.last_response = json.loads(response.content.decode())
+        except Exception:
+            task.last_response = {"raw": response.decode()}
+            raise CommandError(response.decode())
 
     except Exception as exc:
         task.last_response = {
