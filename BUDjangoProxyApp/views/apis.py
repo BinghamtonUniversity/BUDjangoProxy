@@ -28,7 +28,7 @@ def get_create_apis(request):
             request_data = request.data
             request_data['created_by'] = request.user
             request_data['updated_by'] = request.user
-            request_data['user_id'] = request.user.id
+            # request_data['user_id'] = request.user_id
             api = API(**request_data)
             api.api_type = 'python'
             api.created_at = datetime.datetime.now()
@@ -41,12 +41,16 @@ def get_create_apis(request):
                                       version_models = [],
                                       version_views = [],
                                       version_urls=[],
-                                      created_by=request.user,
+                                      user_id = request_data['user_id'],
+                                      # created_by=request.user,
                                       updated_by=request.user,
                                       created_at=datetime.datetime.now(),
                                       updated_at=datetime.datetime.now(),
                                       stable=False)
             api_version.save()
+            api_developer = APIDeveloper(api=api, user=request.user)
+            api_developer.save()
+
             return JsonResponse(model_to_dict(api), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)

@@ -85,7 +85,7 @@ class APIVersion(models.Model):
     resources = models.JSONField(default=dict, null=True, blank=True)
     created_at = models.DateTimeField(db_column='created_at',null=False, blank=False)
     updated_at = models.DateTimeField(db_column='updated_at',null=True, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by', db_column='user_id',db_constraint=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_created_by', db_column='user_id',db_constraint=True)
     updated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_version_updated_by', db_column='updated_by',db_constraint=True)
 
     def __str__(self):
