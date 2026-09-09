@@ -67,6 +67,13 @@ class API(models.Model):
     def __str__(self):
         return f'{self.name} - {self.id}'
 
+    def to_dict(self):
+        data = model_to_dict(self, exclude=['user', 'created_by', 'updated_by'])
+        data['user_id'] = self.user_id
+        data['created_by'] = self.created_by_id
+        data['updated_by'] = self.updated_by_id
+        return data
+
     class Meta:
         db_table = "apis"
         ordering = ['name']

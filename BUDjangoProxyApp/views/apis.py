@@ -28,12 +28,12 @@ def get_create_apis(request):
             request_data = request.data
             request_data['created_by'] = request.user
             request_data['updated_by'] = request.user
-            # request_data['user_id'] = request.user_id
             api = API(**request_data)
             api.api_type = 'python'
             api.created_at = datetime.datetime.now()
             api.updated_at = datetime.datetime.now()
             api.save()
+
             api_version  = APIVersion(api= api,
                                       version_files=[],
                                       resources=[],
@@ -51,7 +51,7 @@ def get_create_apis(request):
             api_developer = APIDeveloper(api=api, user=request.user)
             api_developer.save()
 
-            return JsonResponse(model_to_dict(api), safe=False)
+            return JsonResponse(api.to_dict(), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
@@ -62,14 +62,14 @@ def get_manage_api(request, id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        request_data = get_object_or_404(API, id=id)
-        return JsonResponse(model_to_dict(request_data),safe=False)
+        api = get_object_or_404(API, id=id)
+        return JsonResponse(api.to_dict(),safe=False)
     elif request.method == 'PUT':
         try:
             request_data = request.data
             request_data['updated_at'] = timezone.now()
             API.objects.filter(id=id, api_type='python').update(**request_data)
-            return JsonResponse(model_to_dict(API.objects.get(id=id)), safe=False)
+            return JsonResponse(API.objects.get(id=id).to_dict(), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
@@ -91,8 +91,8 @@ def get_api_versions(request, id):
 def get_api_version_code(request, version_id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
-    request_data = get_object_or_404(APIVersion, id=version_id, api__api_type='python')
-    return JsonResponse(model_to_dict(request_data), safe=False)
+    api_version = get_object_or_404(APIVersion, id=version_id, api__api_type='python')
+    return JsonResponse(model_to_dict(api_version), safe=False)
 
 
 @csrf_exempt
