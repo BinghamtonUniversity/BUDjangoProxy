@@ -92,10 +92,23 @@ class DynamicRoutingMiddleware:
             api_user = APIUser.objects.get(app_name=username)
             if not api_user.check_password(password):
                 raise APIUser.DoesNotExist
-            if not api_user.is_active:
-                return JsonResponse({'error': 'User account is inactive'}, status=403)
 
             request_user_routes = list(filter(lambda e: int(e['api_user']) == api_user.id, api_instance.route_user_map))
+
+            user_ips = getattr(api_user, 'ips', [])
+
+            ip_is_ok = False
+            if user_ips:
+                remote_addr = request.META.get('REMOTE_ADDR', '')
+                print("remote_addr", remote_addr)
+                # Check if the client IP starts with any IP prefix defined in user_ips
+                if any(remote_addr.startswith(ip) for ip in user_ips):
+                    ip_is_ok = True
+            else:
+                ip_is_ok = True
+
+            if not ip_is_ok:
+                return self.prompt_for_credentials()
 
             # Check if the user is one of the users that can access to the instance
             if len(request_user_routes) == 0:

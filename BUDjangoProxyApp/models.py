@@ -213,18 +213,26 @@ class APIUser(models.Model):
     app_name = models.CharField(max_length=255, unique=True, null=False,db_column='app_name',default='api_user')
     app_secret = models.CharField(max_length=255, db_column='app_secret',null=True)  # For storing hashed passwords
     encrypted_app_secret = models.CharField(max_length=255, db_column='encrypted_app_secret',null=True)
+    ips = models.JSONField(encoder=json.JSONEncoder, decoder=json.JSONDecoder, null=True, blank=True)
     environment = models.ForeignKey(Environment, on_delete=models.CASCADE, db_index=True, null=False,
                                     related_name='environment_users',
                                     default=1,
                                     db_constraint=True)
 
-    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'api_users'
         ordering = ['app_name']
+
+    def to_dict(self):
+        data = model_to_dict(self)
+        if self.ips is not None:
+            data['ips'] = list(self.ips)
+
+        data['environment_id'] = self.environment_id
+        return data
 
     def set_password(self, raw_password):
         """

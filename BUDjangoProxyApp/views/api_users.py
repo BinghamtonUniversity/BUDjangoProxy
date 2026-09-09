@@ -19,7 +19,8 @@ def get_create_api_users(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(APIUser.objects.filter(environment__server_name=env_values['SERVER_NAME']).all().values()), safe=False)
+        api_users = APIUser.objects.filter(environment__server_name=env_values['SERVER_NAME'])
+        return JsonResponse([api_user.to_dict() for api_user in api_users], safe=False)
     elif request.method == 'POST':
         request_data = request.data
         try:
@@ -33,7 +34,7 @@ def get_create_api_users(request):
             api_user = APIUser(**request_data)
             api_user.set_password(api_user.app_secret)
 
-            return JsonResponse(model_to_dict(api_user), safe=False)
+            return JsonResponse(api_user.to_dict(), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
@@ -45,21 +46,17 @@ def manage_api_users(request, id):
     if request.method == 'GET':
         request_data = get_object_or_404(APIUser, id=id)
         request_data.encrypted_app_secret = request_data.decrypt_password()
-        return JsonResponse(model_to_dict(request_data), safe=False)
+        return JsonResponse(request_data.to_dict(), safe=False)
     elif request.method == 'PUT':
         try:
             api_user = APIUser.objects.filter(id=id).first()
             if api_user:
                 api_user.environment_id = request.data['environment_id']
-                api_user.is_active = request.data['is_active']
                 api_user.app_name = request.data['app_name']
                 api_user.set_password(request.data['app_secret'])
                 api_user.save()
-                return_dict = model_to_dict(api_user)
-                return_dict['environment_id'] = int(api_user.environment_id)
-                del return_dict['environment']
 
-            return JsonResponse(return_dict,status=200)
+            return JsonResponse(api_user.to_dict(),status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
