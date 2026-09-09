@@ -1,6 +1,7 @@
 import json
 from os import environ
-
+from datetime import datetime
+import croniter
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.forms.models import model_to_dict
@@ -272,6 +273,24 @@ class Scheduler(models.Model):
     class Meta:
         db_table = 'scheduler'
         ordering = ['name']
+
+    def to_dict(self):
+        data = model_to_dict(self)
+        data['next_runtimes'] = self.next_run_times
+        data['api_instance'] = model_to_dict(self.api_instance)
+        data['api_instance_id'] = self.api_instance_id
+        return data
+
+    @property
+    def next_run_times(self) -> list[str]:
+        try:
+            cron = croniter.croniter(self.cron, datetime.now())
+            return [
+                cron.get_next(datetime).strftime("%Y-%m-%d %H:%M:%S")
+                for _ in range(5)
+            ]
+        except Exception:
+            return []
 
 ACTIVITY_ACTION_TYPES = [
     ('POST', 'POST'),

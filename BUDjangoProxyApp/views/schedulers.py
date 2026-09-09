@@ -20,13 +20,17 @@ def get_create_scheduler(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(Scheduler.objects.filter(api_instance__environment__server_name=env_values['SERVER_NAME']).all().values()), safe=False)
+        schedulers = Scheduler.objects.filter(
+            api_instance__environment__server_name=env_values['SERVER_NAME'],
+            api_instance__api__api_type='python'
+        )
+        return JsonResponse([scheduler.to_dict() for scheduler in schedulers], safe=False)
     elif request.method == 'POST':
         try:
             scheduler = Scheduler(**request.data)
             scheduler.save()
 
-            return JsonResponse(model_to_dict(scheduler), safe=False)
+            return JsonResponse(scheduler.to_dict(), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
@@ -37,18 +41,24 @@ def get_manage_scheduler(request, id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(model_to_dict(Scheduler.objects.get(id=id,api_instance__environment__server_name=env_values['SERVER_NAME'])),safe=False)
+        return JsonResponse(Scheduler.objects.get(id=id,
+                                                  api_instance__environment__server_name=env_values['SERVER_NAME'],
+                                                  api_instance__api__api_type='python').to_dict(),safe=False)
     elif request.method == 'PUT':
         try:
             request_data = request.data
-            Scheduler.objects.filter(id=id, api_instance__environment__server_name=env_values['SERVER_NAME']).update(**request_data)
+            Scheduler.objects.filter(id=id,
+                                     api_instance__environment__server_name=env_values['SERVER_NAME'],
+                                     api_instance__api__api_type='python').update(**request_data)
 
-            return JsonResponse(model_to_dict(Scheduler.objects.get(id=id)), safe=False)
+            return JsonResponse(Scheduler.objects.get(id=id).to_dict(), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         try:
-            Scheduler.objects.filter(id=id, api_instance__environment__server_name=env_values['SERVER_NAME']).delete()
+            Scheduler.objects.filter(id=id,
+                                     api_instance__environment__server_name=env_values['SERVER_NAME'],
+                                     api_instance__api__api_type='python').delete()
 
             return JsonResponse({'message': "Success"}, status=200)
         except Exception as e:
@@ -65,6 +75,6 @@ def run_schedule(request, id):
             schedule = Scheduler.objects.get(id=id)
             # print(schedule)
             execute_task(schedule, DynamicAppManager)
-            return JsonResponse(model_to_dict(Scheduler.objects.get(id=id))['last_response'], safe=False)
+            return JsonResponse(Scheduler.objects.get(id=id).to_dict()['last_response'], safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
