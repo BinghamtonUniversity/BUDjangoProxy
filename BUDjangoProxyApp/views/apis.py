@@ -21,39 +21,39 @@ def get_create_apis(request):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        return JsonResponse(list(API.objects.filter(api_type='python').all().values()), safe=False)
+        return JsonResponse(list(API.objects.filter(api_type='python',deleted_at=None).all().values()), safe=False)
 
     elif request.method == 'POST':
-        try:
-            request_data = request.data
-            request_data['created_by'] = request.user
-            request_data['updated_by'] = request.user
-            api = API(**request_data)
-            api.api_type = 'python'
-            api.created_at = datetime.datetime.now()
-            api.updated_at = datetime.datetime.now()
-            api.save()
+        # try:
+        request_data = request.data
+        request_data['created_by'] = request.user
+        request_data['updated_by'] = request.user
+        api = API(**request_data)
+        api.api_type = 'python'
+        api.created_at = datetime.now()
+        api.updated_at = datetime.now()
+        api.save()
 
-            api_version  = APIVersion(api= api,
-                                      version_files=[],
-                                      resources=[],
-                                      options = None,
-                                      version_models = [],
-                                      version_views = [],
-                                      version_urls=[],
-                                      user_id = request_data['user_id'],
-                                      # created_by=request.user,
-                                      updated_by=request.user,
-                                      created_at=datetime.datetime.now(),
-                                      updated_at=datetime.datetime.now(),
-                                      stable=False)
-            api_version.save()
-            api_developer = APIDeveloper(api=api, user=request.user)
-            api_developer.save()
+        api_version  = APIVersion(api= api,
+                                  version_files=[],
+                                  resources=[],
+                                  options = None,
+                                  version_models = [],
+                                  version_views = [],
+                                  version_urls=[],
+                                  user_id = request_data['user_id'],
+                                  # created_by=request.user,
+                                  updated_by=request.user,
+                                  created_at=datetime.now(),
+                                  updated_at=datetime.now(),
+                                  stable=False)
+        api_version.save()
+        api_developer = APIDeveloper(api=api, user=request.user)
+        api_developer.save()
 
-            return JsonResponse(api.to_dict(), safe=False)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse(api.to_dict(), safe=False)
+        # except Exception as e:
+        #     return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 @policy(can_manage_api, object_arg_name='id')
@@ -62,19 +62,22 @@ def get_manage_api(request, id):
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
     if request.method == 'GET':
-        api = get_object_or_404(API, id=id)
+        api = get_object_or_404(API, id=id, deleted_at=None)
         return JsonResponse(api.to_dict(),safe=False)
     elif request.method == 'PUT':
         try:
             request_data = request.data
             request_data['updated_at'] = timezone.now()
-            API.objects.filter(id=id, api_type='python').update(**request_data)
+            API.objects.filter(id=id, api_type='python',deleted_at=None).update(**request_data)
             return JsonResponse(API.objects.get(id=id).to_dict(), safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     elif request.method == 'DELETE':
         try:
-            API.objects.filter(id=id, api_type='python').delete()
+            if APIInstance.objects.filter(api_id=id).exists():
+                return JsonResponse("This API is in use by an API Instance, please delete the instance first!", status=400, safe=False)
+
+            API.objects.filter(id=id, api_type='python', deleted_at=None).update(deleted_at=datetime.now())
             return JsonResponse({'message': "Success"}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
