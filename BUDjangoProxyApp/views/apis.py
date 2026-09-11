@@ -8,8 +8,6 @@ from django.http import HttpResponse, JsonResponse, HttpRequest, HttpResponseNot
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.utils import timezone
-from datetime import timezone as dt_timezone
 from ..models import *
 from ..lib.policies_wrapper import policy
 from ..policies.apis import *
@@ -67,7 +65,7 @@ def get_manage_api(request, id):
     elif request.method == 'PUT':
         try:
             request_data = request.data
-            request_data['updated_at'] = timezone.now()
+            request_data['updated_at'] = datetime.now()
             API.objects.filter(id=id, api_type='python',deleted_at=None).update(**request_data)
             return JsonResponse(API.objects.get(id=id).to_dict(), safe=False)
         except Exception as e:
@@ -140,7 +138,7 @@ def manage_api_version_code(request, id):
 
     local = api_version.updated_at
     if request.data.get('updated_at') is None:
-        request.data['updated_at'] = datetime.datetime.now(dt_timezone.utc).isoformat()
+        request.data['updated_at'] = datetime.now()
 
     incoming = parse_datetime(request.data.get('updated_at'))
 
@@ -149,8 +147,8 @@ def manage_api_version_code(request, id):
         api_version = APIVersion(api_id=id, stable=False,
                                  created_by=request.user,
                                  updated_by=request.user,
-                                 created_at=timezone.now(),
-                                 updated_at=timezone.now())
+                                 created_at=datetime.now(),
+                                 updated_at=datetime.now())
 
     elif not (incoming >= local or 'force' in request.data):
         return JsonResponse({"error": model_to_dict(api_version)}, status=409)
@@ -161,7 +159,7 @@ def manage_api_version_code(request, id):
         api_version.version_files = request.data.get('version_files')
         api_version.resources = request.data.get('resources')
         api_version.options = request.data.get('options')
-        api_version.updated_at = timezone.now()
+        api_version.updated_at = datetime.now()
         api_version.updated_by = request.user
         api_version.save()
 
