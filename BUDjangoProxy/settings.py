@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 env_values = dotenv_values(".env")
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,19 +31,14 @@ SECRET_KEY = env_values["DJANGO_SECRET_KEY"] if 'DJANGO_SECRET_KEY' in env_value
 DEBUG = env_values["DEBUG"]=='True' if "DEBUG" in env_values else False
 
 ALLOWED_HOSTS = env_values["ALLOWED_HOSTS"].split(",")
+
 CSRF_TRUSTED_ORIGINS= env_values["CSRF_TRUSTED_ORIGINS"].split(",")
 CORS_ORIGIN_ALLOW_ALL = env_values["CORS_ORIGIN_ALLOW_ALL"]=="True" if "CORS_ORIGIN_ALLOW_ALL" in env_values else False
 
 # Application definition
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
-    'rest_framework',
     'BUDjangoProxyApp',
     'BUDjangoProxyApp.dynamic_apps',
 ]
@@ -51,18 +47,23 @@ INSTALLED_APPS = [
 DYNAMIC_APPS_DIR = os.path.join(BASE_DIR, 'BUDjangoProxyApp/dynamic_apps')
 
 
+
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware',
-              'django.contrib.sessions.middleware.SessionMiddleware',
               'django.middleware.common.CommonMiddleware',
-              'django.contrib.auth.middleware.AuthenticationMiddleware',
-              'django.contrib.messages.middleware.MessageMiddleware',
               'django.middleware.clickjacking.XFrameOptionsMiddleware',
-              # 'BUDjangoProxyApp.middleware.NormalizeRequestDataMiddleware',
-              'BUDjangoProxyApp.middleware.DynamicRoutingMiddleware',
-              'corsheaders.middleware.CorsMiddleware'
+              'corsheaders.middleware.CorsMiddleware',
+              "django.middleware.csrf.CsrfViewMiddleware",
+
+              # Custom Middlewares
+            'BUDjangoProxyApp.middleware.customRouting.NormalizeRequestDataMiddleware',
+              'BUDjangoProxyApp.middleware.customRouting.DynamicRoutingMiddleware',
+              'BUDjangoProxyApp.middleware.userAuthentication.UserAuthenticationMiddleware',
+              'BUDjangoProxyApp.middleware.userAuthentication.NoCacheAuthMiddleware',
+              'BUDjangoProxyApp.middleware.userAuthentication.RequestContextMiddleware'
               ]
 
 ROOT_URLCONF = 'BUDjangoProxy.urls'
+
 
 TEMPLATES = [
     {
@@ -142,6 +143,18 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env_values['MAIL_HOST']
+EMAIL_PORT = 587
+EMAIL_HOST_USER = env_values['MAIL_SMTP_USERNAME']
+EMAIL_HOST_PASSWORD = env_values['MAIL_SMTP_PASSWORD']
+DEFAULT_FROM_EMAIL = env_values['MAIL_FROM_ADDRESS']
+DEFAULT_FROM_NAME = env_values['MAIL_FROM_NAME']
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+
+# DEFAULT_FROM_NAME = env_values['DEFAULT_FROM_NAME']  if 'DEFAULT_FROM_NAME' in env_values else None
 
 LOGGING = {
     'version': 1,

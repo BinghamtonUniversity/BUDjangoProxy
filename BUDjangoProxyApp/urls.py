@@ -25,7 +25,7 @@ urlpatterns = [
 
     # APIs OPERATIONS
     # GET, POST APIs view
-    path('apis', view=apis.get_create_apis, name='get_create_api_users'),
+    path('apis', view=apis.get_create_apis, name='get_create_apis'),
     # Put, Delete API View
     path('apis/<int:id>', view=apis.get_manage_api, name='manage_apis'),
 
@@ -34,10 +34,21 @@ urlpatterns = [
     path('apis/<int:id>/code', view=apis.manage_api_version_code, name='manage_api_version'),
     # GET API Version -> Get all the version of the API
     path('apis/<int:id>/versions', view=apis.get_api_versions, name='get_api_versions'),
+    # GET ALL API VERSIONS
+    path('api_versions', view=apis.get_all_api_versions, name='get_all_api_versions'),
+
+    path('api_versions/<int:version_id>', view=apis.get_api_version_code, name='get_api_version_code'),
     # GET API Version -> get the latest API version
     path('apis/<int:id>/versions/latest', view=apis.get_latest_api_version, name='get_latest_api_version'),
     # PUT API Version -> Publish the API
     path('apis/<int:id>/publish', view=apis.publish_api_version, name='publish_api_version'),
+
+    # GET API Developer
+    path('apis/<int:api_id>/developers', view=apis.get_api_developers, name='get_api_developer'),
+
+    # DELETE/ Create API Developer
+    path('apis/<int:api_id>/developers/<int:user_id>', view=apis.create_delete_api_developer, name='create_api_developer'),
+
 
     # API INSTANCES Operations
     # GET, POST API Instance(s)
@@ -53,4 +64,23 @@ urlpatterns = [
     # GET Resources by Type
     path('resources/type/<str:type>', view=resources.get_resources_by_type, name='get_resources_by_type'),
 
+    #USERS Operations
+    # GET, POST Users
+    path('users', view=users.get_create_users, name='get_create_users'),
+    # GET, PUT, DELETE Users ID
+    path('users/<int:id>', view=users.get_manage_user, name='get_manage_user'),
+    path('users/<int:user_id>/apis', view=users.get_user_apis, name='get_user_apis'),
+    # path('users/unique_id/<str:unique_id>', view=users.get_users_by_unique_id, name='get_users_by_unique_id'),
+
+    #Schedulers Operations
+    # GET, POST Schedulers
+    path('scheduler', view=schedulers.get_create_scheduler, name='get_create_scheduler'),
+
+    # GET, PUT, DELETE Schedulers by ID
+    path('scheduler/<int:id>', view=schedulers.get_manage_scheduler, name='get_manage_scheduler'),
+    path('scheduler/<int:id>/run', view=schedulers.run_schedule, name='run_scheduler'),
+
+    #Activity Logs Operations
+    # GET Activity Logs
+    path('activity_log', view=activity_logs.get_activity_log, name='get_activity_log')
 ]

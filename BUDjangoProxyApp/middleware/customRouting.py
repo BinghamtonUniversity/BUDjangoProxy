@@ -1,16 +1,17 @@
 from django.http import JsonResponse, HttpResponseNotAllowed
-from .models import APIInstance, APIUser, Environment
-from .services.CustomPathResolver import CustomPathResolver
-from .services.VersionControl import VersionControl
-from .services.DynamicLoader import DynamicAppManager
+from BUDjangoProxyApp.models import APIInstance, APIUser, Environment
+from BUDjangoProxyApp.services.CustomPathResolver import CustomPathResolver
+from BUDjangoProxyApp.services.VersionControl import VersionControl
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
 import base64
 
+
 class DynamicRoutingMiddleware:
-    EXCLUDED_PATHS = ['/admin/', '/static/','/api/']  # Routes to be excluded from dynamic routing
+    EXCLUDED_PATHS = ['/static/','/api/']  # Routes to be excluded from dynamic routing
 
     def __init__(self, get_response):
         self.get_response = get_response
-        DynamicAppManager.reload_all_instances()
+        DynamicAppManager.initialize()
 
     def __call__(self, request):
         if any(request.path.startswith(path) for path in self.EXCLUDED_PATHS):
@@ -41,7 +42,7 @@ class DynamicRoutingMiddleware:
         refresh_required = False
         if not version_control.file_integrity_check(api_instance):
             refresh_required = True
-            DynamicAppManager.load_api_instance(api_instance)
+            DynamicAppManager._load_api_instance(api_instance)
 
         # Authenticate API user for every request
         api_user = self.authenticate_api_user(request, api_instance)
@@ -51,11 +52,7 @@ class DynamicRoutingMiddleware:
         # Attach authenticated user and API instance to the request
         request.api_user = api_user
         request.api_instance = api_instance
-        # Ensure that requested path allow the request method
-        # version_urls = api_instance.get_instance_version().version_urls
-        # print('version_urls',version_urls)
-        # current_version_url = next((url for url in version_urls if path[1:]== url['path']), None)
-        # print('current_one',current_version_url)
+
 
         custom_resolver = CustomPathResolver()
         # Fixing the incoming URL for the URLs file
@@ -65,7 +62,6 @@ class DynamicRoutingMiddleware:
         view_func, args, kwargs = custom_resolver.resolve(request, api_instance, refresh_required=refresh_required)
 
         version_urls = api_instance.get_instance_version().version_urls
-        # print('version_urls', version_urls)
         current_version_url = next((url for url in version_urls if view_func.__name__ == url['view_name']), None)
         if request.method != "ALL" and request.method != current_version_url['verb']:
             return HttpResponseNotAllowed(request.method, f"{request.method} method not allowed for this route")
@@ -96,32 +92,39 @@ class DynamicRoutingMiddleware:
             api_user = APIUser.objects.get(app_name=username)
             if not api_user.check_password(password):
                 raise APIUser.DoesNotExist
-            if not api_user.is_active:
-                return JsonResponse({'error': 'User account is inactive'}, status=403)
 
-            # print('api_instance',api_instance.route_user_map)
             request_user_routes = list(filter(lambda e: int(e['api_user']) == api_user.id, api_instance.route_user_map))
 
-            # request.method
+            user_ips = getattr(api_user, 'ips', [])
+
+            ip_is_ok = False
+            if user_ips:
+                remote_addr = request.META.get('REMOTE_ADDR', '')
+                print("remote_addr", remote_addr)
+                # Check if the client IP starts with any IP prefix defined in user_ips
+                if any(remote_addr.startswith(ip) for ip in user_ips):
+                    ip_is_ok = True
+            else:
+                ip_is_ok = True
+
+            if not ip_is_ok:
+                return self.prompt_for_credentials()
+
             # Check if the user is one of the users that can access to the instance
             if len(request_user_routes) == 0:
                 return self.prompt_for_credentials()
-            # print('request_user', request_user)
             # Check if the user can use the request method
-            if next((e for e in request_user_routes if e['verb'] == "ALL" and e['route'] ==""), None):
-                print("user has ALL for all routes")
+            if next((e for e in request_user_routes if e['verb'] == "ALL" and (e['route'] =="*")), None):
+                return api_user
+            elif next((e for e in request_user_routes if e['verb'] == request.method and (e['route'] =="*")), None):
                 return api_user
             elif next((e for e in request_user_routes if e['verb'] == "ALL" and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
-                print("user has ALL for this route")
                 return api_user
             elif next((e for e in request_user_routes if e['verb'] == request.method and request.path.startswith(f"/{api_instance.route}{e['route']}")), None):
-                print(f"user has {request.method} for this route")
                 return api_user
             # API User Path security enforcement
             else:
                 return self.prompt_for_credentials()
-            # if request_user['route']!= "" and not request.path.startswith(f"/{api_instance.route}{request_user['route']}"):
-            #     return self.prompt_for_credentials()
 
         except APIUser.DoesNotExist:
             return self.prompt_for_credentials()
@@ -141,39 +144,40 @@ class DynamicRoutingMiddleware:
         )
 
 
-# middleware.py
-# import json
-# from django.http import HttpRequest
-# from django.core.exceptions import SuspiciousOperation
-#
-# class NormalizeRequestDataMiddleware:
-#     def __init__(self, get_response):
-#         self.get_response = get_response
-#
-#     def __call__(self, request: HttpRequest):
-#         # Start with GET and POST data
-#         # Initialize an empty dictionary for all request data
-#         all_data = {}
-#
-#         # Add GET parameters
-#         all_data.update(request.GET.items())
-#
-#         # Handle POST data (form data or urlencoded)
-#         if request.method in ['POST', 'PUT']:
-#             # Include POST data (works for application/x-www-form-urlencoded)
-#             all_data.update(request.POST.items())
-#
-#             # Include files if present (multipart/form-data)
-#             if request.FILES:
-#                 files_data = {key: value.name for key, value in request.FILES.items()}
-#                 all_data.update({'files': files_data})  # Add file names as a sub-dictionary
-#
-#             # Handle JSON if content type is application/json
-#             if request.content_type == 'application/json':
-#                 try:
-#                     json_data = json.loads(request.body.decode('utf-8'))
-#                     all_data.update(json_data)
-#                 except (json.JSONDecodeError, UnicodeDecodeError):
-#                     pass  # Fallback to existing data
-#         request.data = all_data
-#         return request
+# customRouting.py
+import json
+from django.http import HttpRequest
+
+class NormalizeRequestDataMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest, *args, **kwargs):
+        # Start with GET and POST data
+        # Initialize an empty dictionary for all request data
+        all_data = {}
+
+        # Add GET parameters
+        all_data.update(request.GET.items())
+
+        # Handle POST data (form data or urlencoded)
+        if request.method in ['POST', 'PUT']:
+            # Include POST data (works for application/x-www-form-urlencoded)
+            all_data.update(request.POST.items())
+
+            # Include files if present (multipart/form-data)
+            if request.FILES:
+                files_data = {key: value.name for key, value in request.FILES.items()}
+                all_data.update({'files': files_data})  # Add file names as a sub-dictionary
+
+            # Handle JSON if content type is application/json
+            if request.content_type == 'application/json':
+                try:
+                    json_data = json.loads(request.body.decode('utf-8'))
+                    all_data.update(json_data)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass  # Fallback to existing data
+        request.data = all_data
+
+        return self.get_response(request)
+

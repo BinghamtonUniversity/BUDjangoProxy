@@ -1,0 +1,32 @@
+from django.http import request, JsonResponse
+from ..models import API, APIInstance, APIDeveloper
+
+def can_get_create_api_instance(request):
+    is_api_developer = APIDeveloper.objects.filter(user_id=request.user).exists()
+    is_api_owner = API.objects.filter(user_id=request.user).exists()
+    if request.method == "GET":
+        return request.user.admin or request.user.developer or is_api_developer or is_api_owner
+
+    if request.user.admin or request.user.developer or is_api_owner or is_api_developer:
+        return True
+    else:
+        return False
+
+def can_manage_api_instance(request,id):
+    try:
+        api_instance = APIInstance.objects.get(id=id)
+    except API.DoesNotExist:
+        api_instance = None
+
+    if request.method == 'DELETE':
+        if request.user.admin or api_instance.api.user.id == request.user.id:
+            return True, api_instance
+        else:
+            return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
+
+    try:
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user.id, api=api_instance.api.id).exists()
+    except APIDeveloper.DoesNotExist:
+        return False, JsonResponse({"error": "Not authorized to manage this API"}, status=403)
+
+    return request.user.admin or is_api_developer or api_instance.api.user.id == request.user.id, api_instance

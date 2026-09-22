@@ -1,7 +1,7 @@
 import importlib
 import json
 import sys
-
+from ..lib.helpers import clear_cached_modules
 from django.urls.resolvers import get_resolver, RegexPattern
 from django.urls import resolve, Resolver404, include, path, URLResolver
 
@@ -25,16 +25,21 @@ class CustomPathResolver:
 
     def resolve(self, request, api_instance, refresh_required=False):
         instance_id = api_instance.id  # Assuming APIInstance has an 'id' field
-        module_path = f"BUDjangoProxyApp.dynamic_apps.{instance_id}.urls"
+        base_prefix = f"BUDjangoProxyApp.dynamic_apps.{instance_id}"
+        module_path = f"{base_prefix}.urls"
 
         # Check if the module is already loaded and reload it to pick up changes
-        if refresh_required and module_path in sys.modules:
-            urls_module = importlib.reload(sys.modules[module_path])
-        else:
+        if refresh_required:
+            clear_cached_modules(base_prefix)
+
+        try:
+            # Try loading fresh module (may be cached if no refresh)
+            urls_module = importlib.import_module(module_path)
+        except Exception:
+            # IF IMPORT FAILS → clear cache and re-import
+            clear_cached_modules(base_prefix)
             urls_module = importlib.import_module(module_path)
 
-        instance_version = api_instance.get_instance_version()
-        print(instance_version)
 
         # Get the URL patterns from the module
         dynamic_urlconf = getattr(urls_module, 'urlpatterns', [])
@@ -48,23 +53,23 @@ class CustomPathResolver:
 
 
         request_path = request.path.strip('/').split('/')
-        print(f"Dynamic URLConf: {dynamic_urlconf}")
 
         # Create a URLResolver directly with the dynamic patterns
         resolver = URLResolver(RegexPattern(r'^/'), urlconf_name=dynamic_urlconf)
-        print(f"Resolver created: {resolver.callback}")
 
         # Rewrite the request path to match the dynamic URL patterns
-        adjusted_path = '/' + '/'.join(request_path[1:]) + ('/' if request.path.endswith('/') else '')
+        adjusted_path = '//'+'/'.join(request_path[1:]) + ('/' if request.path.endswith('/') else '')
         request.path_info = adjusted_path
-        print(f"Adjusted path: {adjusted_path}")
 
         resolver_match = resolver.resolve(adjusted_path)
 
         view_func = resolver_match.func
         args = resolver_match.args
         kwargs = resolver_match.kwargs
-        print(f"View function Name: {view_func.__name__}, args: {args}, kwargs: {kwargs}")
+        if hasattr(request, 'data'):
+            request.data.update(dict(kwargs))
+        else:
+            request.data = dict(kwargs)
 
         # Call the view function through the resolver
         return view_func, args, kwargs

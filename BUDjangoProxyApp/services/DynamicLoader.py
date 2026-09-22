@@ -5,11 +5,15 @@ from django.db import models
 from django.http import JsonResponse
 from django.urls import path, include
 from django.conf import settings
-from ..models import Resource
+from ..models import Resource, APIInstance
 import ast
 import astor
 from ..lib import helpers
 from dotenv import dotenv_values
+from django.db import connections
+from BUDjangoProxyApp.services.OracleDB import OracleDB
+import functools
+from BUDjangoProxyApp.services.VersionControl import VersionControl
 
 env_values = dotenv_values(".env")
 
@@ -20,11 +24,27 @@ class DynamicAppManager:
     instance_model_registry = {}
     instance_view_registry = {}
     instance_url_registry = {}
-    instance_settings_registry = {}
+    instance_db_registry = {}
+    instance_options = {}
+    instance_resources = {}
+    _initialized = False
+
+    @classmethod
+    def initialize(cls, api_instance=None):
+        if api_instance is not None:
+            cls._load_api_instance(APIInstance.objects.filter(id=api_instance).first())
+            cls._initialized = True
+            return
+
+        if cls._initialized:
+            return
+        cls._reload_all_instances()
+        cls._initialized = True
+
 
     # To Load instances
     @classmethod
-    def load_api_instance(cls, api_instance):
+    def _load_api_instance(cls, api_instance):
         """
         Reload the API instance by creating or updating the app and its components.
         """
@@ -32,16 +52,16 @@ class DynamicAppManager:
 
     # Reloading all the instances on request
     @classmethod
-    def reload_all_instances(cls, version=None):
+    def _reload_all_instances(cls, version=None):
         """
         Reload all API instances dynamically.
         """
         from BUDjangoProxyApp.models import APIInstance
-        instances = APIInstance.objects.select_related('api', 'api_version', 'environment').all()
+        instances = APIInstance.objects.filter(environment__server_name=env_values['SERVER_NAME']).select_related('api', 'api_version_id', 'environment').all()
 
         for instance in instances:
             try:
-                cls.load_api_instance(instance)
+                cls._load_api_instance(instance)
             except Exception as e:
                 logger.error(e)
 
@@ -53,29 +73,36 @@ class DynamicAppManager:
         """
         Get the path for a dynamic app based on the instance route.
         """
-        print("Writing dynamic app path")
 
         dynamic_root = os.path.join(settings.BASE_DIR,"BUDjangoProxyApp", "dynamic_apps")
         app_path = os.path.join(dynamic_root, f"{instance_id}")
         os.makedirs(app_path, exist_ok=True)
         return app_path
 
-    @staticmethod
-    def write_file(path, content):
-        """
-        Utility function to write content to a file.
-        """
-        with open(path, "w") as f:
-            f.write(content)
+    @classmethod
+    def register_db(cls, instance_id, db_instance):
+        cls.instance_db_registry[instance_id] = db_instance
+
+
+    @classmethod
+    def get_db(cls, instance_id):
+        return cls.instance_db_registry.get(instance_id)
+
+
 
     ### INSTANCE MANAGEMENT ###
     @classmethod
-    def create_or_update_app(cls, api_instance):
+    def create_or_update_app(cls, api_instance, refresh_required = False):
         """
         Create or update the dynamic app for an API instance.
         """
         app_path = cls.get_app_path(api_instance.id)
-        api_version = api_instance.get_instance_version()
+        api_version = api_instance.api_version
+        version_control = VersionControl()
+        models_code = None
+        views_code = None
+        urls_code = None
+
 
         if not api_version:
             return JsonResponse({"error":"Version does not exist"})
@@ -86,41 +113,81 @@ class DynamicAppManager:
                                filter(id__in=[int(res['resource'])
                                               for res in api_instance.resources
                                               if 'resource' in res]).values())
-                          },
+                          } if api_instance.resources else {},
             "instance_mappings": api_instance.resources,
             "version_resources": api_version.resources
         }
 
         # try:
             # code_content = json.loads(version.code_content)
-        # instance_options = {}
         # Prepare the version files
-        models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
-        views_code = helpers.prepare_new_views_file(api_version.version_views,
-                                                    api_version.version_urls,
-                                                    resources=None,
-                                                    options=api_instance.options)
-        urls_code = helpers.prepare_new_url_file(api_version.version_urls)
+        if len(api_version.version_models)>0:
+            models_code = helpers.prepare_new_models_file(api_version.version_models) #code_content.get("models", "")
+
+        if resources_mapping['instance_mappings'] is not None:
+            class_config = OracleDB()
+            try:
+                for db in resources_mapping['instance_mappings']:
+                    found_db_resource = resources_mapping['resources'][int(db['resource'])]
+                    if found_db_resource['resource_type'] != 'secret' and found_db_resource['resource_type'] != 'value':
+                        found_config = helpers.db_resource_fix(found_db_resource['config'])
+                        ready_config = helpers.prepare_new_resource_db(found_db_resource['resource_type'], found_config)
+                        class_config.config_database(db['name'], ready_config)
+
+                cls.register_db(api_instance.id, class_config)
+            except Exception as e:
+                logger.error(e)
+        if not version_control.file_integrity_check(api_instance):
+            print("Updating the additional files...")
+            # Create new additional files
+            helpers.prepare_new_additional_files(api_version, api_instance, app_path)
+
+        if api_version.version_views != "" and api_version.version_views is not None:
+            views_code = helpers.prepare_new_views_file(api_instance.id,
+                                                        api_version.version_models,
+                                                        api_version.version_views,
+                                                        api_version.version_urls,
+                                                        files=api_version.version_files)
+            helpers.validate_code(views_code)
+
+        if api_version.version_urls != "" and api_version.version_urls is not None:
+            urls_code = helpers.prepare_new_url_file(api_version.version_urls)
+            helpers.validate_code(urls_code)
 
         # Validate codes
-        helpers.validate_code(models_code)
-        helpers.validate_code(views_code)
-        helpers.validate_code(urls_code)
-        # except json.JSONDecodeError as e:
-        #     logger.error(f"Failed to decode code_content for APIInstance {api_instance.id}: {e}")
-        #     return
+        if models_code:
+            helpers.validate_code(models_code)
 
-        # Write apps to the files first
-        cls.write_file(os.path.join(app_path, "__init__.py"), "")  # Ensure it's a Python package
-        cls.write_file(os.path.join(app_path, "models.py"), models_code)
-        cls.write_file(os.path.join(app_path, "views.py"), views_code)
-        cls.write_file(os.path.join(app_path, "urls.py"), urls_code)
-        cls.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
+            # except json.JSONDecodeError as e:
+            #     logger.error(f"Failed to decode code_content for APIInstance {api_instance.id}: {e}")
+            #     return
+        if not version_control.file_integrity_check(api_instance):
 
-        # Register the models
-        cls.register_models(api_instance.id, models_code, resources_mapping)
-        cls.register_views(api_instance.id, views_code)
-        cls.register_urls(api_instance.id, urls_code)
+            print("Updating the files...")
+            # Write apps to the files first
+            helpers.write_file(os.path.join(app_path, "__init__.py"), "")  # Ensure it's a Python package
+            if models_code:
+                helpers.write_file(os.path.join(app_path, "models.py"), models_code)
+
+            helpers.write_file(os.path.join(app_path, "views.py"), views_code)
+            helpers.write_file(os.path.join(app_path, "urls.py"), urls_code)
+            helpers.write_file(os.path.join(app_path, "apps.py"), cls.generate_apps_py_content(api_instance.id))
+
+            # Update the version control file
+            version_control.file_reload(api_instance, api_version)
+
+            # Register the models/views/urls
+        if models_code:
+            cls.register_models(api_instance.id, models_code, resources_mapping)
+
+
+        if views_code:
+            cls.register_views(api_instance.id, views_code,
+                               resources= helpers.prepare_instance_resources(resources_mapping),
+                               options=api_instance.options
+                               )
+        if urls_code:
+            cls.register_urls(api_instance.id, urls_code)
 
     @classmethod
     def generate_apps_py_content(cls, instance_id):
@@ -163,20 +230,31 @@ class Instance{instance_id}Config(AppConfig):
                     if not hasattr(obj, "_meta"):
                         obj._meta = type("_meta", (), {})
 
+                    if not resources_mapping['resources']:
+                        return
+
                     filtered_resources = {res['model_name']: res['name'] for res in resources_mapping['version_resources']
                                           if res['type'] == 'Model'}
+
                     # Model DB settings and registration before the model registration
                     if obj_name in filtered_resources:
-
                         version_resource = filtered_resources[obj_name]
                         api_mapping = next((e for e in resources_mapping['instance_mappings'] if e['name'] == version_resource), None)
                         if api_mapping:
                             if int(api_mapping['resource']) in resources_mapping['resources']:
                                 found_resource = resources_mapping['resources'][int(api_mapping['resource'])]
-                                found_config = helpers.resource_fix(found_resource['config'])
+                                found_config = helpers.db_resource_fix(found_resource['config'])
                                 if api_mapping['name'] != 'default':
-                                    settings.DATABASES[api_mapping['name']] = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
-                                obj._meta.db_name= api_mapping['name']
+                                    db_config = helpers.prepare_new_resource_db(found_resource['resource_type'],found_config)
+                                    db_alias = f"{api_mapping['name']}_{instance_id}"
+
+                                    obj._meta.db_alias = db_alias
+                                    obj._meta.db_config = db_config
+
+                                    if db_alias not in connections.databases:
+                                        connections.databases[db_alias] = db_config
+
+                                obj._meta.db_name = db_alias
 
                     cls.instance_model_registry[instance_id][obj_name] = obj
                     logger.info(f"Registered models for instance {instance_id}")
@@ -187,7 +265,7 @@ class Instance{instance_id}Config(AppConfig):
     ### VIEW MANAGEMENT ###
 
     @classmethod
-    def register_views(cls, instance_id, views_code):
+    def register_views(cls, instance_id, views_code, resources, options):
         """
         Dynamically register views scoped to a specific instance.
         """
@@ -196,11 +274,24 @@ class Instance{instance_id}Config(AppConfig):
         views_namespace = {"__name__": f"BUDjangoProxyApp.dynamic_views_{instance_id}"}
 
         try:
-
             exec(views_code, views_namespace)
             for obj_name, obj in views_namespace.items():
                 if callable(obj) and isinstance(obj, types.FunctionType):
-                    cls.instance_view_registry[instance_id][obj_name] = obj
+                    def make_wrapper(func, _resources=resources, _options=options):
+                        @functools.wraps(func)
+                        def wrapper(request, *view_args, **view_kwargs):
+
+                            # Make external args/resources/options available to the view
+                            view_kwargs['args']= request.data
+                            view_kwargs['resources'] = _resources
+                            view_kwargs['options'] = _options
+                            return func(request, *view_args, **view_kwargs)
+
+                        return wrapper
+
+                    wrapped = make_wrapper(obj)
+                    cls.instance_view_registry[instance_id][obj_name] = wrapped
+
                     logger.info(f"View {obj_name} registered for instance {instance_id}")
         except Exception as e:
             logger.error(f"Error registering views for instance {instance_id}: {e}")
@@ -243,18 +334,18 @@ class Instance{instance_id}Config(AppConfig):
         """
         Retrieve a specific view for a given route dynamically.
         """
+        if not cls._initialized:
+            raise RuntimeError(
+                "DynamicAppManager not initialized. "
+                "Call DynamicAppManager.initialize() at process startup."
+            )
+
         instance_id = api_instance.id
         instance_views = cls.instance_view_registry.get(instance_id, {})
         api_version = api_instance.get_instance_version()
 
         if not api_version:
             return JsonResponse({"error": "Version does not exist"})
-
-        # File integrity check to ensure that the most up-to date file is coming from the server
-        # version_control = VersionControl()
-        # if not version_control.file_integrity_check(api_instance):
-        #     cls.load_api_instance(api_instance)
-
 
         view_func = instance_views.get(view_name)
         cls.current_instance_id = instance_id
