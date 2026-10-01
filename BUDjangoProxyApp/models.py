@@ -418,7 +418,8 @@ def update_activity_logger(sender, instance, **kwargs):
         new=password_hide(model_to_dict(instance)) if instance else [],
         user_id = get_request_user_info().unique_id,
         action = request.method,
-        type= environment_type
+        type= environment_type,
+        comment = request.activity_comment
     )
 
 def post_activity_logger(sender, instance, **kwargs):
@@ -447,37 +448,6 @@ def post_activity_logger(sender, instance, **kwargs):
         new=password_hide(model_to_dict(instance)),
         user_id = get_request_user_info().unique_id,
         action = request.method,
-        type=environment_type
-    )
-
-def delete_activity_logger(sender, instance, **kwargs):
-    if sender == ActivityLog:
-        return
-
-    request = get_request_context()
-    if request.method != "DELETE":
-        return
-
-    try:
-        old_instance = sender.objects.get(pk=instance.pk)
-    except sender.DoesNotExist:
-        return
-
-    environment_type = None
-    if sender.__name__ in EXISTING_TYPES:
-        if sender.__name__ == "APIInstance":
-            environment_type = old_instance.environment.type
-        elif sender.__name__ == "Environment":
-            environment_type = old_instance.type
-        elif sender.__name__ == "Resource":
-            environment_type = old_instance.type
-
-    ActivityLog.objects.create(
-        event_id=instance.id,
-        event=sender.__name__,
-        old=password_hide(model_to_dict(old_instance)),
-        new=[],
-        user_id=get_request_user_info().unique_id,
-        action=request.method,
-        type=environment_type
+        type=environment_type,
+        comment=request.activity_comment
     )

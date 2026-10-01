@@ -177,6 +177,12 @@ class NormalizeRequestDataMiddleware:
                     all_data.update(json_data)
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     pass  # Fallback to existing data
+        if 'comment' in all_data:
+            request.activity_comment = all_data['comment']
+            del all_data['comment']
+        else:
+            request.activity_comment = None
+
         request.data = all_data
 
         return self.get_response(request)
