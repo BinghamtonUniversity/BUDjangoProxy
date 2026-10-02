@@ -400,7 +400,7 @@ def update_activity_logger(sender, instance, **kwargs):
     except sender.DoesNotExist:
         old_instance = []
 
-    environment_type = None
+    environment_type = ""
     if sender.__name__ in EXISTING_TYPES:
         if sender.__name__ == "APIInstance":
             environment_type = instance.environment.type
