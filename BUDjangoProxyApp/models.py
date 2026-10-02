@@ -430,7 +430,7 @@ def post_activity_logger(sender, instance, **kwargs):
     if request.method != "POST":
         return
 
-    environment_type = None
+    environment_type = ""
     if sender.__name__ in EXISTING_TYPES:
         if sender.__name__ == "APIInstance":
             environment_type = instance.environment.type
