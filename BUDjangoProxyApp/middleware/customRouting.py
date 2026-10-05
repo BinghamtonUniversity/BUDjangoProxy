@@ -181,7 +181,7 @@ class NormalizeRequestDataMiddleware:
             request.activity_comment = all_data['comment']
             del all_data['comment']
         else:
-            request.activity_comment = None
+            request.activity_comment = ""
 
         request.data = all_data
 
