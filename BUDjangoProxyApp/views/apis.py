@@ -150,6 +150,8 @@ def manage_api_version_code(request, id):
         api_version = APIVersion(api_id=id, stable=False,
                                  updated_by=request.user,
                                  user_id= request.user.id,
+                                 summary="",
+                                 description="",
                                  created_at=timezone.now(),
                                  updated_at=timezone.now())
 
