@@ -53,7 +53,9 @@ def manage_api_users(request, id):
             if api_user:
                 api_user.environment_id = request.data['environment_id']
                 api_user.app_name = request.data['app_name']
-                api_user.ips = request.data['ips']
+                if 'ips' in request.data:
+                    api_user.ips = request.data['ips']
+                    
                 api_user.set_password(request.data['app_secret'])
                 api_user.save()
 
