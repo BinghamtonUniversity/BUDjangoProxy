@@ -2,7 +2,7 @@ from django.http import JsonResponse, HttpResponseNotAllowed
 from BUDjangoProxyApp.models import APIInstance, APIUser, Environment
 from BUDjangoProxyApp.services.CustomPathResolver import CustomPathResolver
 from BUDjangoProxyApp.services.VersionControl import VersionControl
-from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager, env_values
 import base64
 
 
@@ -89,7 +89,7 @@ class DynamicRoutingMiddleware:
 
         try:
             # Retrieve and authenticate the user
-            api_user = APIUser.objects.get(app_name=username)
+            api_user = APIUser.objects.get(app_name=username, environment__server_name=env_values['SERVER_NAME'])
             if not api_user.check_password(password):
                 raise APIUser.DoesNotExist
 
