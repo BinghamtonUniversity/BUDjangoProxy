@@ -65,7 +65,7 @@ def get_manage_scheduler(request, id):
             return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
-# @policy(can_manage_scheduler,object_arg_name='id')
+@policy(can_run_scheduler,object_arg_name='id')
 def run_schedule(request, id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
@@ -73,8 +73,16 @@ def run_schedule(request, id):
     if request.method == 'GET':
         try:
             schedule = Scheduler.objects.get(id=id)
-            # print(schedule)
             execute_task(schedule, DynamicAppManager)
             return JsonResponse(Scheduler.objects.get(id=id).to_dict()['last_response'], safe=False)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+
+
+@csrf_exempt
+@policy(can_get_create_scheduler)
+def read_last_response(request, id):
+    if request.method in ['GET']:
+        return JsonResponse({"last_response": Scheduler.objects.get(id=id).to_dict()['last_response']}, safe=False)
+    else:
+        return JsonResponse({"error":"Method not allowed"}, status=405)

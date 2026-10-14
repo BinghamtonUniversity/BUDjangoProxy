@@ -3,6 +3,8 @@ from BUDjangoProxyApp.services.CustomPathResolver import CustomPathResolver
 from django.utils import timezone
 from django.core.management.base import CommandError
 from django.test import RequestFactory
+from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager, env_values
+from BUDjangoProxyApp.services.VersionControl import VersionControl
 import json
 
 # ----------------------------------------------------
@@ -54,13 +56,19 @@ def execute_task(task, loader_instance):
         if task.args:
             request.data = {p["name"]: p["value"] for p in task.args}
 
+        version_control = VersionControl()
+        refresh_required = False
+        if not version_control.file_integrity_check(api_instance):
+            refresh_required = True
+            DynamicAppManager._load_api_instance(api_instance)
 
         custom_resolver = CustomPathResolver()
         # Fixing the incoming URL for the URLs file
         custom_resolver.incoming_url_fix(request, api_instance)
 
         # Get the args and kwargs maps from the resolver
-        view_func, args, kwargs = custom_resolver.resolve(request, api_instance)
+        view_func, args, kwargs = custom_resolver.resolve(request, api_instance,refresh_required=refresh_required)
+        
 
         version_urls = api_instance.get_instance_version().version_urls
         current_version_url = next((url for url in version_urls if view_func.__name__ == url['view_name']), None)

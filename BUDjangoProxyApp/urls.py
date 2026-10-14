@@ -78,6 +78,7 @@ urlpatterns = [
 
     # GET, PUT, DELETE Schedulers by ID
     path('scheduler/<int:id>', view=schedulers.get_manage_scheduler, name='get_manage_scheduler'),
+    path('scheduler/<int:id>/last_response', view=schedulers.read_last_response, name='get_last_response'),
     path('scheduler/<int:id>/run', view=schedulers.run_schedule, name='run_scheduler'),
 
     #Activity Logs Operations
