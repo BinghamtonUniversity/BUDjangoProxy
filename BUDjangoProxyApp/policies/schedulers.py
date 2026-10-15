@@ -6,10 +6,7 @@ def can_get_create_scheduler(request):
         is_api_developer = APIDeveloper.objects.filter(user_id=request.user).exists()
         return request.user.admin or request.user.developer or is_api_developer
 
-    if request.user.active and (request.user.admin or request.user.developer):
-        return True
-    else:
-        return False
+    return request.user.active and (request.user.admin or request.user.developer)
 
 def can_manage_scheduler(request,id):
     try:
@@ -24,3 +21,17 @@ def can_manage_scheduler(request,id):
             return False, JsonResponse({"error": "Not authorized to manage the schedule"}, status=403)
 
     return request.user.admin or request.user.developer
+
+def can_run_scheduler(request, id):
+    try:
+        scheduler = Scheduler.objects.get(id=id)
+        is_api_developer = APIDeveloper.objects.filter(user_id=request.user,api=scheduler.api_instance.api.id).exists()
+    except Scheduler.DoesNotExist:
+        scheduler = None
+
+
+    if request.user.admin or request.user.developer or is_api_developer:
+        return True, scheduler
+    else:
+        return False, JsonResponse({"error": "Not authorized to manage the schedule"}, status=403)
+
