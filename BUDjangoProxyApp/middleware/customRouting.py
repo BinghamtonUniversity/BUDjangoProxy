@@ -89,7 +89,7 @@ class DynamicRoutingMiddleware:
 
         try:
             # Retrieve and authenticate the user
-            api_user = APIUser.objects.get(app_name=username, environment__server_name=env_values['SERVER_NAME'])
+            api_user = APIUser.objects.get(app_name=username, environment__server_name=env_values['SERVER_NAME'], environment_id=api_instance.environment_id)
             if not api_user.check_password(password):
                 raise APIUser.DoesNotExist
 
