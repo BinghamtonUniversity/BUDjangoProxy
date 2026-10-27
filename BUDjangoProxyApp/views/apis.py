@@ -90,7 +90,7 @@ def get_api_versions(request, id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    return JsonResponse(list(APIVersion.objects.filter(api_id=id, api__api_type='python',stable=True).values('id','description','summary','stable','created_at')), safe=False)
+    return JsonResponse(list(APIVersion.objects.filter(api_id=id, api__api_type='python',stable=True).order_by('-created_at').values('id','description','summary','stable','created_at')), safe=False)
 
 @csrf_exempt
 def get_api_version_code(request, version_id):
