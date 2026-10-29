@@ -90,7 +90,7 @@ def get_api_versions(request, id):
     if request.method not in ['GET']:
         return JsonResponse({"error":"Method not allowed"}, status=405)
 
-    return JsonResponse(list(APIVersion.objects.filter(api_id=id, api__api_type='python',stable=True).values('id','description','summary','stable','created_at')), safe=False)
+    return JsonResponse(list(APIVersion.objects.filter(api_id=id, api__api_type='python',stable=True).order_by('-created_at').values('id','description','summary','stable','created_at')), safe=False)
 
 @csrf_exempt
 def get_api_version_code(request, version_id):
@@ -155,7 +155,7 @@ def manage_api_version_code(request, id):
                                  created_at=timezone.now(),
                                  updated_at=timezone.now())
 
-    elif not (incoming >= local or 'force' in request.data):
+    elif not (incoming is not None and incoming >= local or 'force' in request.data):
         return JsonResponse({"error": model_to_dict(api_version)}, status=409)
     try:
         api_version.version_models = request.data.get('version_models')
