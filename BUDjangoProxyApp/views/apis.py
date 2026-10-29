@@ -155,7 +155,7 @@ def manage_api_version_code(request, id):
                                  created_at=timezone.now(),
                                  updated_at=timezone.now())
 
-    elif not (incoming >= local or 'force' in request.data):
+    elif not (incoming is not None and incoming >= local or 'force' in request.data):
         return JsonResponse({"error": model_to_dict(api_version)}, status=409)
     try:
         api_version.version_models = request.data.get('version_models')
