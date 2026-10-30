@@ -7,6 +7,7 @@ import base64
 import logging
 import uuid
 import traceback
+from BUDjangoProxyApp.services.APIErrorHandler import get_developer_error_location
 
 
 class DynamicRoutingMiddleware:
@@ -52,36 +53,44 @@ class DynamicRoutingMiddleware:
         if isinstance(api_user, JsonResponse):  # Authentication failed
             return api_user
 
-        # Attach authenticated user and API instance to the request
+        
+        
+        # Attach authenticated user and API instance
         request.api_user = api_user
         request.api_instance = api_instance
 
         custom_resolver = CustomPathResolver()
 
-        # Fixing the incoming URL for the URLs file
-        custom_resolver.incoming_url_fix(request, api_instance)
+        # Normalize incoming request path
+        custom_resolver.incoming_url_fix(
+            request,
+            api_instance,
+        )
 
-        # Get the args and kwargs maps from the resolver
+        # Resolve the developer's view
         view_func, args, kwargs = custom_resolver.resolve(
             request,
             api_instance,
-            refresh_required=refresh_required
+            refresh_required=refresh_required,
         )
 
-        version_urls = api_instance.get_instance_version().version_urls
+        api_version = api_instance.get_instance_version()
+
+        version_urls = api_version.version_urls
 
         current_version_url = next(
             (
-                url for url in version_urls
+                url
+                for url in version_urls
                 if view_func.__name__ == url["view_name"]
             ),
-            None
+            None,
         )
 
         if current_version_url is None:
             return JsonResponse(
                 {"error": "API route not found"},
-                status=404
+                status=404,
             )
 
         if (
@@ -92,78 +101,78 @@ class DynamicRoutingMiddleware:
                 [current_version_url["verb"]]
             )
 
-        # Dynamically load and execute the developer's view
+        # Dynamically load and execute developer view
+        developer_view = None
+
         try:
-            view_func = DynamicAppManager.get_view(
+            developer_view = DynamicAppManager.get_view(
                 request.api_instance,
-                view_func.__name__
+                view_func.__name__,
             )
 
-            return view_func(request, *args, **kwargs)
+            return developer_view(
+                request,
+                *args,
+                **kwargs,
+            )
 
         except Exception as exc:
             error_id = uuid.uuid4().hex
 
-            logging.getLogger("budjangoproxy.api").exception(
+            logger = logging.getLogger(
+                "budjangoproxy.api"
+            )
+
+            # Preserve complete traceback in server logs.
+            logger.exception(
                 "APIInstance %s failed. Error ID: %s",
                 api_instance.pk,
                 error_id,
             )
 
-            response_data = {
-                "error": "Internal server error"
-            }
+            response_data = "Internal server error"
+            
 
-            # Assumes APIInstance.error is a BooleanField.
-            # Only show details when authorized to see them.
+            # Use your existing API developer permission
+            # mechanism if developers aren't Django staff.
+            show_errors = (
+                api_instance.errors == 'all'
+            )
 
-            if api_instance.errors =='all':
-                # Extract traceback frames
-                frames = traceback.extract_tb(exc.__traceback__)
-
-                # Last traceback frame: where the exception occurred
-                error_frame = frames[-1] if frames else None
+            if show_errors:
+                location = get_developer_error_location(
+                    exc=exc,
+                    view_func=developer_view,
+                    api_version=api_version,
+                )
 
                 response_data = {
                     "error": "API execution failed",
                     "error_type": type(exc).__name__,
                     "error_message": str(exc),
-                    "function": error_frame.name if error_frame else None,
-                    "traceback": self.get_view_traceback(exc, view_func)
+                    "file": (
+                        location["file"]
+                        if location else None
+                    ),
+                    "line": (
+                        location["line"]
+                        if location else None
+                    ),
+                    "function": (
+                        location["function"]
+                        if location else None
+                    ),
+                    "code": (
+                        location["code"]
+                        if location else None
+                    ),
                 }
 
-            return JsonResponse(response_data, status=500)
+            return JsonResponse(
+                response_data,
+                status=500,
+            )
 
-    def get_view_traceback(self, exc, view_func):
-        """
-        Return only traceback entries from the specified
-        developer view function.
-        """
-        view_code = getattr(view_func, "__code__", None)
-
-        if view_code is None:
-            return []
-
-        result = []
-        tb = exc.__traceback__
-
-        while tb is not None:
-            frame = tb.tb_frame
-
-            if frame.f_code is view_code:
-                absolute_line = tb.tb_lineno
-
-                result.append({
-                    "line": absolute_line - view_code.co_firstlineno + 1,
-                    "function": view_code.co_name,
-                    "code": (
-                        traceback.extract_tb(tb, limit=1)[0].line or ""
-                    ),
-                })
-
-            tb = tb.tb_next
-
-        return result
 
     def authenticate_api_user(self, request, api_instance):
         """
