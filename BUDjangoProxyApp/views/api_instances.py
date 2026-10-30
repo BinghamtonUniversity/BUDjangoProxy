@@ -61,14 +61,15 @@ def get_manage_api_instance(request, id):
             api_instance = APIInstance.objects.filter(id=id, environment__server_name=env_values['SERVER_NAME'], api__api_type='python').first()
             api_version = APIVersion.objects.filter(id=request_data['api_version_id']).first()
 
-            api_instance.name = request_data['name']
-            api_instance.route = request_data['route']
-            api_instance.route_user_map = request_data['route_user_map']
+            api_instance.name = request_data.get('name')
+            api_instance.route = request_data.get('route')
+            api_instance.route_user_map = request_data.get('route_user_map')
             api_instance.api_version_id = api_version
-            api_instance.resources = request_data['resources']
-            api_instance.options = request_data['options']
-            api_instance.public = request_data['public']
+            api_instance.resources = request_data.get('resources')
+            api_instance.options = request_data.get('options')
+            api_instance.public = request_data.get('public')
             api_instance.updated_at = datetime.now()
+            api_instance.errors = request_data.get('errors','all')
             api_instance.save()
 
             response_data = instance_to_dict(APIInstance.objects.get(id=id,

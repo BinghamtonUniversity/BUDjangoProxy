@@ -4,6 +4,10 @@ from BUDjangoProxyApp.services.CustomPathResolver import CustomPathResolver
 from BUDjangoProxyApp.services.VersionControl import VersionControl
 from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager, env_values
 import base64
+import logging
+import uuid
+import traceback
+from BUDjangoProxyApp.services.APIErrorHandler import get_developer_error_location
 
 
 class DynamicRoutingMiddleware:
@@ -49,27 +53,126 @@ class DynamicRoutingMiddleware:
         if isinstance(api_user, JsonResponse):  # Authentication failed
             return api_user
 
-        # Attach authenticated user and API instance to the request
+        
+        
+        # Attach authenticated user and API instance
         request.api_user = api_user
         request.api_instance = api_instance
 
-
         custom_resolver = CustomPathResolver()
-        # Fixing the incoming URL for the URLs file
-        custom_resolver.incoming_url_fix(request, api_instance)
 
-        # Get the args and kwargs maps from the resolver
-        view_func, args, kwargs = custom_resolver.resolve(request, api_instance, refresh_required=refresh_required)
+        # Normalize incoming request path
+        custom_resolver.incoming_url_fix(
+            request,
+            api_instance,
+        )
 
-        version_urls = api_instance.get_instance_version().version_urls
-        current_version_url = next((url for url in version_urls if view_func.__name__ == url['view_name']), None)
-        if request.method != "ALL" and request.method != current_version_url['verb']:
-            return HttpResponseNotAllowed(request.method, f"{request.method} method not allowed for this route")
+        # Resolve the developer's view
+        view_func, args, kwargs = custom_resolver.resolve(
+            request,
+            api_instance,
+            refresh_required=refresh_required,
+        )
 
+        api_version = api_instance.get_instance_version()
 
-        # Dynamically load and execute the view
-        view_func = DynamicAppManager.get_view(request.api_instance, view_func.__name__)
-        return view_func(request, *args, **kwargs)
+        version_urls = api_version.version_urls
+
+        current_version_url = next(
+            (
+                url
+                for url in version_urls
+                if view_func.__name__ == url["view_name"]
+            ),
+            None,
+        )
+
+        if current_version_url is None:
+            return JsonResponse(
+                {"error": "API route not found"},
+                status=404,
+            )
+
+        if (
+            request.method != "ALL"
+            and request.method != current_version_url["verb"]
+        ):
+            return HttpResponseNotAllowed(
+                [current_version_url["verb"]]
+            )
+
+        # Dynamically load and execute developer view
+        developer_view = None
+
+        try:
+            developer_view = DynamicAppManager.get_view(
+                request.api_instance,
+                view_func.__name__,
+            )
+
+            return developer_view(
+                request,
+                *args,
+                **kwargs,
+            )
+
+        except Exception as exc:
+            error_id = uuid.uuid4().hex
+
+            logger = logging.getLogger(
+                "budjangoproxy.api"
+            )
+
+            # Preserve complete traceback in server logs.
+            logger.exception(
+                "APIInstance %s failed. Error ID: %s",
+                api_instance.pk,
+                error_id,
+            )
+
+            response_data = "Internal server error"
+            
+
+            # Use your existing API developer permission
+            # mechanism if developers aren't Django staff.
+            show_errors = (
+                api_instance.errors == 'all'
+            )
+
+            if show_errors:
+                location = get_developer_error_location(
+                    exc=exc,
+                    view_func=developer_view,
+                    api_version=api_version,
+                )
+
+                response_data = {
+                    "error": "API execution failed",
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "file": (
+                        location["file"]
+                        if location else None
+                    ),
+                    "line": (
+                        location["line"]
+                        if location else None
+                    ),
+                    "function": (
+                        location["function"]
+                        if location else None
+                    ),
+                    "code": (
+                        location["code"]
+                        if location else None
+                    ),
+                }
+
+            return JsonResponse(
+                response_data,
+                status=500,
+            )
+
 
     def authenticate_api_user(self, request, api_instance):
         """

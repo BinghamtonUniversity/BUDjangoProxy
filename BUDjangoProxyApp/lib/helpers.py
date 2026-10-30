@@ -5,6 +5,9 @@ from django.forms import model_to_dict
 from BUDjangoProxyApp.services.LaravelEncryptor import LaravelEncryptor
 from BUDjangoProxy.settings import env_values, DYNAMIC_APPS_DIR
 import sys
+import keyword
+from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 
@@ -157,46 +160,135 @@ def prepare_new_models_file(models):
     return f"""from django.db import models\n\n{appended_models}"""
 
 
-def prepare_new_views_file(instance_id, models, views, urls,files=None):
-    appended_views = ""
-    imported_models = ""
+
+
+def prepare_new_views_file(
+    instance_id,
+    models,
+    views,
+    urls,
+    files=None,
+):
+    module_lines = [
+        "from django.http import JsonResponse",
+        (
+            "from BUDjangoProxyApp.services.DynamicLoader "
+            "import DynamicAppManager as DataProxyManager"
+        ),
+        "import importlib",
+    ]
+
+    # Import additional developer modules.
+    for file in files or []:
+        filename = file.get("name", "")
+
+        if not isinstance(filename, str):
+            continue
+
+        if not filename.endswith(".py"):
+            continue
+
+        module_name = filename[:-3]
+
+        if (
+            not module_name.isidentifier()
+            or keyword.iskeyword(module_name)
+            or module_name in {
+                "__init__", "models", "views", "urls"
+            }
+        ):
+            continue
+
+        module_lines.append(
+            f"{module_name} = importlib.import_module("
+            f"'BUDjangoProxyApp.dynamic_apps."
+            f"{instance_id}.{module_name}')"
+        )
+
+    module_lines.extend([
+        "",
+        f"oracledb = DataProxyManager.get_db({instance_id!r})",
+        "",
+    ])
+
+    # Prepare model initialization statements.
+    imported_models = []
+
     for model in models:
-        if 'content' not in model or model['content'] is None or model['content'] == '':
+        if not model.get("content"):
             continue
-        if 'name' in model and model['name'] is not None and model['name'] != '':
-            imported_models += f"""{model['name']} = DataProxyManager.get_model('{model['name']}')\n"""
+
+        model_name = model.get("name")
+
+        if model_name:
+            imported_models.append(
+                f"{model_name} = "
+                f"DataProxyManager.get_model({model_name!r})"
+            )
+
+    # Generate each view.
     for view in views:
-        if 'content' not in view or view['content'] is None or view['content'] == '':
+        content = view.get("content")
+
+        if not isinstance(content, str) or not content:
             continue
-        request_param = ""
-        request_params = next((url for url in urls if url['view_name'] == view['name']), None)
-        if request_params and 'required' in request_params and len(request_params['required'])>0:
-            required_params = [param['name'] for param in request_params['required']]
-            request_param = ",".join(required_params)
 
-        appended_views += f"""def {view['name']}(request{","+request_param if request_param!="" else ''}, args=None, resources=None, options=None):
-    {imported_models.replace('\n', '\n    ')}
-    
-    {view['content'].replace('\n', '\n    ')}
-"""
+        view_name = view["name"]
 
-    # Clean out the previously imported modules to re-import the files as the module
-    clear_cached_modules(f"BUDjangoProxyApp.dynamic_apps.{instance_id}")
+        request_params = next(
+            (
+                url for url in urls
+                if url["view_name"] == view_name
+            ),
+            None,
+        )
 
-    appended_files = ""
-    if files is not None:
-        for file in files:
-            if 'name' in file and file['name'] is not None and file['name'] != '':
-                appended_files += f"""{file['name'].split(".")[0]} = importlib.import_module("BUDjangoProxyApp.dynamic_apps.{instance_id}.{file['name'].split(".")[0]}")\n"""
+        required_params = []
 
-    return f"""from django.http import JsonResponse
-from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager
-import importlib
-{appended_files}
+        if request_params:
+            required_params = [
+                param["name"]
+                for param in request_params.get("required", [])
+            ]
 
-oracledb = DataProxyManager.get_db({instance_id})
-{appended_views}
-"""
+        request_param = ",".join(required_params)
+        extra_params = (
+            f",{request_param}" if request_param else ""
+        )
+
+        module_lines.append(
+            f"def {view_name}"
+            f"(request{extra_params}, "
+            "args=None, resources=None, options=None):"
+        )
+
+        # Hidden model setup lines.
+        for model_line in imported_models:
+            module_lines.append(f"    {model_line}")
+
+        module_lines.append("")
+
+        # First physical line of developer GUI source.
+        gui_start_line = len(module_lines) + 1
+
+        # Preserve GUI line numbering, including blanks.
+        for line in content.split("\n"):
+            module_lines.append(f"    {line}")
+
+        # Metadata is assigned outside the function.
+        module_lines.append("")
+        module_lines.append(
+            f"{view_name}.__api_gui_start_line__ = "
+            f"{gui_start_line}"
+        )
+        module_lines.append(
+            f"{view_name}.__api_gui_source__ = {content!r}"
+        )
+        module_lines.append("")
+
+    return "\n".join(module_lines) + "\n"
+
+
 
 # Preparing the urls files
 def prepare_new_url_file(urls):
@@ -218,23 +310,110 @@ from .views import *
 urlpatterns = [{",\n".join(url_patterns)}]
     """
 
-def prepare_new_additional_files(api_version, api_instance, app_path):
-    existing_files = [file['name'] for file in api_version.version_files] #to keep the current list of files
-    cleanup_dynamic_app_directory(app_path, existing_files)
-    # Create the helper files
-    for file in api_version.version_files:
-        if 'content' not in file or file['content'] is None or file['content'] == '' or len(file['name'].split('.')) != 2 or file['name'].split('.')[1]!='py':
+
+
+
+RESERVED_DYNAMIC_FILES = {
+    "__init__.py",
+    "models.py",
+    "views.py",
+    "urls.py",
+}
+
+
+def prepare_new_additional_files(
+    api_version,
+    api_instance,
+    app_path,
+):
+    """
+    Generate developer helper modules.
+
+    The first two physical lines are infrastructure.
+    Developer GUI content begins on physical line 3.
+    """
+
+    app_path = Path(app_path).resolve()
+    version_files = api_version.version_files or []
+
+    valid_files = []
+    seen_names = set()
+
+    for file in version_files:
+        if not isinstance(file, dict):
             continue
 
-        if file['name'] != "" and file['name'] != '' and file['name'] != '__init__.py' and file[
-            'name'] != 'models.py' and file['name'] != 'views.py' and file[
-            'name'] != 'urls.py':
-            prepend_text = f"""
-from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager as DataProxyManager\n
-oracledb = DataProxyManager.get_db({api_instance.id})
-{file['content']}"""
+        filename = file.get("name")
+        content = file.get("content")
 
-            write_file(os.path.join(app_path, file['name']), prepend_text)
+        if not isinstance(filename, str):
+            continue
+
+        if not isinstance(content, str) or not content:
+            continue
+
+        # Reject paths and reserved names.
+        if (
+            Path(filename).name != filename
+            or "/" in filename
+            or "\\" in filename
+            or filename in RESERVED_DYNAMIC_FILES
+        ):
+            continue
+
+        if not filename.endswith(".py"):
+            continue
+
+        module_name = filename[:-3]
+
+        if (
+            not module_name.isidentifier()
+            or keyword.iskeyword(module_name)
+        ):
+            continue
+
+        if filename in seen_names:
+            raise ValueError(
+                f"Duplicate additional filename: {filename}"
+            )
+
+        seen_names.add(filename)
+        valid_files.append((filename, content))
+
+    # Preserve the original cleanup behavior:
+    # retain filenames declared in the API version.
+    existing_files = [
+        file["name"]
+        for file in version_files
+        if (
+            isinstance(file, dict)
+            and isinstance(file.get("name"), str)
+        )
+    ]
+
+    cleanup_dynamic_app_directory(
+        str(app_path),
+        existing_files,
+    )
+
+    for filename, content in valid_files:
+
+        # Exactly two generated header lines.
+        header = (
+            "from BUDjangoProxyApp.services.DynamicLoader "
+            "import DynamicAppManager as DataProxyManager\n"
+            f"oracledb = DataProxyManager.get_db("
+            f"{api_instance.id!r})\n"
+        )
+
+        generated_source = header + content
+
+        file_path = app_path / filename
+
+        write_file(
+            str(file_path),
+            generated_source,
+        )
 
 
 def instance_to_dict(instance, with_relations=None):
