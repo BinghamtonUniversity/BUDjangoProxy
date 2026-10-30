@@ -14,7 +14,7 @@ django-jsonview==2.0.0
 idna==3.20
 invoke==2.2.0
 oauthlib==4.0.0
-oracledb==26.1.0
+oracledb==3.3.0
 packaging==24.1
 paramiko==4.0.0
 phpserialize==1.3
