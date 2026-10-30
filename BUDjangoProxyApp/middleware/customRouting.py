@@ -4,6 +4,9 @@ from BUDjangoProxyApp.services.CustomPathResolver import CustomPathResolver
 from BUDjangoProxyApp.services.VersionControl import VersionControl
 from BUDjangoProxyApp.services.DynamicLoader import DynamicAppManager, env_values
 import base64
+import logging
+import uuid
+import traceback
 
 
 class DynamicRoutingMiddleware:
@@ -53,23 +56,114 @@ class DynamicRoutingMiddleware:
         request.api_user = api_user
         request.api_instance = api_instance
 
-
         custom_resolver = CustomPathResolver()
+
         # Fixing the incoming URL for the URLs file
         custom_resolver.incoming_url_fix(request, api_instance)
 
         # Get the args and kwargs maps from the resolver
-        view_func, args, kwargs = custom_resolver.resolve(request, api_instance, refresh_required=refresh_required)
+        view_func, args, kwargs = custom_resolver.resolve(
+            request,
+            api_instance,
+            refresh_required=refresh_required
+        )
 
         version_urls = api_instance.get_instance_version().version_urls
-        current_version_url = next((url for url in version_urls if view_func.__name__ == url['view_name']), None)
-        if request.method != "ALL" and request.method != current_version_url['verb']:
-            return HttpResponseNotAllowed(request.method, f"{request.method} method not allowed for this route")
 
+        current_version_url = next(
+            (
+                url for url in version_urls
+                if view_func.__name__ == url["view_name"]
+            ),
+            None
+        )
 
-        # Dynamically load and execute the view
-        view_func = DynamicAppManager.get_view(request.api_instance, view_func.__name__)
-        return view_func(request, *args, **kwargs)
+        if current_version_url is None:
+            return JsonResponse(
+                {"error": "API route not found"},
+                status=404
+            )
+
+        if (
+            request.method != "ALL"
+            and request.method != current_version_url["verb"]
+        ):
+            return HttpResponseNotAllowed(
+                [current_version_url["verb"]]
+            )
+
+        # Dynamically load and execute the developer's view
+        try:
+            view_func = DynamicAppManager.get_view(
+                request.api_instance,
+                view_func.__name__
+            )
+
+            return view_func(request, *args, **kwargs)
+
+        except Exception as exc:
+            error_id = uuid.uuid4().hex
+
+            logging.getLogger("budjangoproxy.api").exception(
+                "APIInstance %s failed. Error ID: %s",
+                api_instance.pk,
+                error_id,
+            )
+
+            response_data = {
+                "error": "Internal server error"
+            }
+
+            # Assumes APIInstance.error is a BooleanField.
+            # Only show details when authorized to see them.
+
+            if api_instance.errors =='all':
+                # Extract traceback frames
+                frames = traceback.extract_tb(exc.__traceback__)
+
+                # Last traceback frame: where the exception occurred
+                error_frame = frames[-1] if frames else None
+
+                response_data = {
+                    "error": "API execution failed",
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "function": error_frame.name if error_frame else None,
+                    "traceback": self.get_view_traceback(exc, view_func)
+                }
+
+            return JsonResponse(response_data, status=500)
+
+    def get_view_traceback(self, exc, view_func):
+        """
+        Return only traceback entries from the specified
+        developer view function.
+        """
+        view_code = getattr(view_func, "__code__", None)
+
+        if view_code is None:
+            return []
+
+        result = []
+        tb = exc.__traceback__
+
+        while tb is not None:
+            frame = tb.tb_frame
+
+            if frame.f_code is view_code:
+                absolute_line = tb.tb_lineno
+
+                result.append({
+                    "line": absolute_line - view_code.co_firstlineno + 1,
+                    "function": view_code.co_name,
+                    "code": (
+                        traceback.extract_tb(tb, limit=1)[0].line or ""
+                    ),
+                })
+
+            tb = tb.tb_next
+
+        return result
 
     def authenticate_api_user(self, request, api_instance):
         """

@@ -69,6 +69,7 @@ def get_manage_api_instance(request, id):
             api_instance.options = request_data['options']
             api_instance.public = request_data['public']
             api_instance.updated_at = datetime.now()
+            api_instance.errors = request_data['errors']
             api_instance.save()
 
             response_data = instance_to_dict(APIInstance.objects.get(id=id,
